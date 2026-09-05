@@ -80,6 +80,32 @@ fixed and small (`grok-4.6` default, `grok-4.5`) → dispatch only through
 Ordinary budget discipline **does** apply to Grok; the user's opt-in Codex
 pre-approval (SKILL.md Step 0 item 4) does not extend here.
 
+## Ollama seats (local)
+
+Follow [ollama-workers.md](ollama-workers.md): probe → confirm the server is
+reachable and Aider is installed (Ollama alone has no edit/tool-use loop) →
+dispatch only through `scripts/ollama-dispatch.sh`.
+
+- No consent gate — nothing is billed to another account, so the per-dispatch
+  ask that applies to Codex/Grok does not apply here. This is what makes it
+  safe to honor the user's hybrid-trust instruction (simple/mechanical tasks
+  may dispatch without an ask) *specifically on this seat*: it trades away a
+  money question that doesn't exist locally, not the safety question, which
+  is unsandboxed writes — that gate (the blind verifier) is never waived.
+- **FAST or WORKHORSE only, never FRONTIER.** No benchmark evidence exists
+  for these models the way model-matrix.md's Table 1 sources one for the
+  hosted seats — the absence of evidence is itself a reason not to route
+  judgment work here (First Law).
+- **Context window is a live trap, not a platform constant.** Unlike Codex's
+  or Grok's fixed ceilings, what an Ollama model actually serves depends on
+  how it's invoked and commonly defaults small. Keep local tickets short and
+  self-contained; route large-context work to a hosted seat instead.
+- **Seat evidence is the weakest of the four families** — a plain-text banner
+  line the same process prints about itself, not an independent event stream
+  or billing record. Never write `seat: verified` for a local dispatch.
+- No external rate limit or account pool — the constraint is local hardware,
+  shared with whatever else on the machine is already using it.
+
 ## Choosing the seat for a task
 
 0. **Consult [model-matrix.md](model-matrix.md)** — the evidence table for price, capability, context limits, effort payoff, and task-type placement. This procedure decides *which class*; that table decides *which seat within it*, and records what each choice actually costs.

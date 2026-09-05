@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.0 — 2026-09-05
+
+The "free the execution seat" release. Adds a local worker family (Ollama +
+Aider) for $0-marginal-cost execution — the mechanical counterpart to the
+existing Claude/Codex/Grok crew — with no consent gate (nothing is billed to
+another account) but the same mandatory blind-verifier gate as every other
+seat, since the local worker has no OS-enforced sandbox of its own.
+
+### Added
+- **`references/ollama-workers.md`** — probe, billing (none), model
+  discovery, transport, and honest seat-evidence limits for the local seat.
+- **Local worker support** — `scripts/ollama-dispatch.sh` (fixed-argv
+  launcher pairing Ollama with Aider, since Ollama alone has no
+  edit/tool-use loop) and `agents/foreman-ollama-wrapper.md` (transport
+  wrapper).
+- Ollama + Aider detection in `scripts/probe.sh` (CLI presence, server
+  reachability, pulled models, Aider presence — no billable call).
+- Ollama rows in `references/model-matrix.md` (Tables 5-6) and
+  `references/routing.md`, and an Ollama column in SKILL.md's capability-
+  class table — FAST/WORKHORSE only, never FRONTIER, never a reviewer.
+
+### Why no consent gate, unlike Codex/Grok
+Local execution bills no external account, so the per-dispatch ask that
+exists for Codex/Grok doesn't apply. That specifically enables running
+simple, tightly-scoped tickets without an ask — it trades away a money
+question that doesn't exist on this seat, not the safety question. The
+safety question (unsandboxed writes; git auto-commit is the only undo
+mechanism) is handled by refusing any workspace-write dispatch against a
+dirty tree, and by never waiving the blind-verifier requirement.
+
 ## 0.4.0 — 2026-08-18
 
 The "know what a seat costs" release. Adds xAI Grok as a third worker provider,

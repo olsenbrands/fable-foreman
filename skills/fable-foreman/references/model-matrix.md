@@ -46,6 +46,14 @@ the health warning under Table 4 before treating small gaps as real.
 | gpt-5.6-luna | 0.20 | 1.20 | 90% off | 1.05M | **52** | best value on the board by a wide margin |
 | Claude Haiku 4.5 | 1 | 5 | 90% off | **200K** | 30 | 4096-token cache floor — short turns cache poorly |
 
+**Local (Ollama + Aider) seats are deliberately absent from Table 1.** They
+are $0 marginal cost (excluding electricity/hardware already owned), but have
+no measured entry on the Artificial Analysis Intelligence Index or any other
+cross-vendor benchmark used here — quantization, model choice, and served
+context window all vary per machine. Do not invent a number for the Index
+column to make them sortable against the rest of this table; route them by
+class (ollama-workers.md, routing.md) instead of by a fabricated score.
+
 ## Table 2 — What one real dispatch costs
 
 A 4-turn agentic dispatch: ~100K working context sent fresh once, ~300K re-sent
@@ -219,8 +227,9 @@ task, go up a tier or stop — never take the cheap row because it is cheap.
 | Adversarial review / second opinion | FRONTIER-advisory | **Grok 4.6 @ medium** (Table 4: review curves are flat; escalate to `high` only when the review is itself long-horizon) | Codex sol | — |
 | Well-specified implementation, tests, refactors | WORKHORSE | **Grok 4.6 @ high** (<200K) when cost dominates; **terra** (Codex mid tier — the class table's Codex WORKHORSE seat) otherwise; step up to **sol** only when agentic-execution reliability dominates (First Law: unsure → one tier up) — the only measured head-to-head shows Grok trailing *sol* on DeepSWE and Terminal-Bench (Table 4b). No comparable execution measurement exists for Sonnet 5, whose only cross-model number here is the composite index (where Grok leads 61 to 55) — so do not pick Sonnet over Grok on reliability grounds this table cannot support. | Sonnet 5 / terra on pool grounds | — |
 | Large-context implementation (>200K) | WORKHORSE | **Sonnet 5** | terra | **Grok (cliff)**, Haiku (200K cap) |
-| Mechanical edits, extraction, scanning | FAST | **gpt-5.6-luna @ low** | Haiku 4.5 | frontier seats |
-| Repo-wide sweep (>500K) | any | Claude or Codex (1M ctx) | — | **Grok (500K ceiling)** |
+| Mechanical edits, extraction, scanning | FAST | **gpt-5.6-luna @ low** | Haiku 4.5, then a local Ollama seat if neither is present | frontier seats |
+| Well-specified, tightly-scoped, low-context implementation, free of judgment | WORKHORSE-lite, local | **Ollama + Aider** (ollama-workers.md) when the user has opted into local execution and no hosted seat is preferred | any hosted WORKHORSE seat | judgment work, large-context tickets, anything the blind verifier can't cheaply re-check |
+| Repo-wide sweep (>500K) | any | Claude or Codex (1M ctx) | — | **Grok (500K ceiling)**, local (context ceiling varies and is commonly small) |
 
 > **On "FRONTIER-advisory" — what that row does and does not grant.** A billed-tier
 > seat never carries class-sensitive *authority* (verification.md): it cannot make
@@ -243,6 +252,7 @@ observable** on any provider, so nothing here allocates quota.
 | Claude (LEAD + subagents) | the foreman's own | heavy Claude fan-out shortens the run itself |
 | Codex | ChatGPT subscription, weekly rolling window | independent; exhaustion is abrupt and has happened |
 | Grok | grok.com account | independent third pool |
+| Ollama (local) | local hardware, not an account pool | no external exhaustion; contends with whatever else on the machine is already using the GPU/CPU (ollama-workers.md) |
 
 **Use:** prefer an off-family seat for bulk implementation so the LEAD pool lasts.
 When a pool is *known* down, re-route the remainder and journal it. This never

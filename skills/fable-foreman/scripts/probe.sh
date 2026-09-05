@@ -111,6 +111,36 @@ else
 fi
 echo "grok sandbox: default is OFF — dispatches must always pass an explicit sandbox profile"
 
+# Local seat (Ollama + Aider). No consent gate — nothing is billed to another
+# account — but the server must actually be reachable, and Aider is a
+# separate required dependency (Ollama alone has no edit/tool-use loop).
+OLLAMA_URL="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+if command -v ollama >/dev/null 2>&1; then
+  echo "ollama: installed ($(command -v ollama))"
+  OLLAMA_VERSION=$(ollama --version 2>&1) || OLLAMA_VERSION="UNKNOWN (version command failed)"
+  echo "ollama version: $OLLAMA_VERSION"
+  if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 3 "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then
+    echo "ollama server: reachable at $OLLAMA_URL"
+    MODELS=$(ollama list 2>/dev/null | awk 'NR>1{print $1}' | tr '\n' ' ')
+    if [ -n "$MODELS" ]; then
+      echo "ollama models (pulled): $MODELS"
+    else
+      echo "ollama models (pulled): none found (or 'ollama list' failed)"
+    fi
+  else
+    echo "ollama server: NOT reachable at $OLLAMA_URL — local dispatch will refuse"
+  fi
+else
+  echo "ollama: NOT installed"
+fi
+if command -v aider >/dev/null 2>&1; then
+  AIDER_VERSION=$(aider --version 2>&1) || AIDER_VERSION="UNKNOWN (version command failed)"
+  echo "aider: installed ($(command -v aider)), version: $AIDER_VERSION"
+else
+  echo "aider: NOT installed — required for local dispatch (Ollama has no edit/tool-use loop on its own); pip install aider-chat"
+fi
+echo "local seat sandbox: none (OS-enforced) — git auto-commit is the only undo mechanism; scripts/ollama-dispatch.sh refuses workspace-write dispatch against a dirty tree"
+
 # Native-transport (claudemix-style splitter) facts — reported separately;
 # presence of parts does not mean the transport is routable (setup-runbook.md).
 if command -v cliproxyapi >/dev/null 2>&1; then

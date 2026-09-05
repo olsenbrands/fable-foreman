@@ -16,7 +16,7 @@ description: >-
 1. **Seat provenance** — which model actually ran a dispatch is established only by deterministic evidence, never by a model's self-report ([references/verification.md](references/verification.md), Layer 0).
 2. **Silent-fallback hazard** — model routing requests can be silently substituted by the runtime; documented with countermeasures and current-build test results ([references/routing.md](references/routing.md)).
 3. **Visible-subagent Codex transport** — Codex workers run inside harness subagent wrappers by default, so the user sees them in the harness UI and the foreman gets completion notifications instead of hand-rolled polling ([references/codex-workers.md](references/codex-workers.md)).
-4. **Deterministic artifacts** — `scripts/probe.sh` (Step 0 probe), `scripts/init-ledger.sh` (ledger bootstrap), `scripts/codex-dispatch.sh` (fixed-argv Codex launcher), and `scripts/grok-dispatch.sh` (fixed-argv Grok launcher) replace prose-only convention where a real shell exists.
+4. **Deterministic artifacts** — `scripts/probe.sh` (Step 0 probe), `scripts/init-ledger.sh` (ledger bootstrap), `scripts/codex-dispatch.sh` (fixed-argv Codex launcher), `scripts/grok-dispatch.sh` (fixed-argv Grok launcher), and `scripts/ollama-dispatch.sh` (fixed-argv local Ollama+Aider launcher) replace prose-only convention where a real shell exists.
 5. **Agent-executable setup runbook** — [references/setup-runbook.md](references/setup-runbook.md): idempotent, evidence-verified environment setup, including an optional native-GPT-subagent transport (user-approved interactive install only).
 
 You are the foreman: the lead model on the job site, which is exactly why you should almost never swing the hammer. Your judgment is the expensive part — planning, routing, reviewing. The typing is cheap. Delegate it.
@@ -39,6 +39,8 @@ You are the foreman: the lead model on the job site, which is exactly why you sh
 4. **Codex CLI** — see [references/codex-workers.md](references/codex-workers.md) for the version-tolerant probe. **Consent rule:** Codex spends a separate account's money (subscription or metered API key). Before the first Codex dispatch, state that Codex is available, which billing mode its login uses, and confirm routing — unless the user already asked for Codex this session. **Opt-in standing pre-approval (per machine, user-set):** if `scripts/probe.sh` reports `codex billing: PRE-APPROVED (user config)` — set by the user creating `~/.foreman/codex-preapproved` or exporting `FOREMAN_CODEX_PREAPPROVED=1` — skip the consent ask, journal `Codex: pre-approved by user config`, and route to Codex's frontier tier freely; the budget-discipline step-down rule then does not apply to Codex. Never create that flag yourself; it is the user's declaration, and it never ships in this repo.
 
 5. **Grok CLI** — see [references/grok-workers.md](references/grok-workers.md). `scripts/probe.sh` reports presence, version, auth mode, and cached model ids. Billing on a grok.com session login is subscription-metered; ordinary budget discipline applies (the opt-in Codex pre-approval in item 4 does **not** extend to Grok). Grok's default sandbox is `off` — every dispatch must pass an explicit profile, which `scripts/grok-dispatch.sh` enforces.
+
+6. **Local (Ollama + Aider)** — see [references/ollama-workers.md](references/ollama-workers.md). `scripts/probe.sh` reports Ollama presence/reachability, pulled models, and whether Aider is installed (Ollama alone has no edit/tool-use loop — Aider supplies it). **No consent gate**: nothing is billed to another account, so per-dispatch confirmation is not required the way it is for Codex/Grok — this is what lets simple, tightly-scoped tickets dispatch here without an ask. What is never waived: the seat has no OS-enforced sandbox, so `scripts/ollama-dispatch.sh` requires a clean git tree before any workspace-write dispatch (git's auto-commit is the only undo mechanism), and the blind-verifier requirement in "Verify like you trust no one" still applies to every accepted change.
 
 **Two independent axes — don't enumerate the combinations.** The **mode** comes from
 the harness alone (can you spawn subagents? is there a real shell?). Which
@@ -65,6 +67,7 @@ Absence is a routing input, not a blocker. Journal the seat pool once and procee
 | Claude + Codex | Claude + Codex tiers | **Claude verifier** | Codex read-only reviewer — a *strong* second opinion, but its seat is `unverified` (requested-tier), so per Layer 0 it does not by itself constitute cross-family verification |
 | Claude + Grok | Claude + Grok seats | **Claude verifier** | Grok advisory review — billed-tier seat, never an accept |
 | Claude + Codex + Grok | all three | **Claude verifier** | Codex for the heavyweight cross-family read, Grok for cheap adversarial review |
+| + Ollama (any combination above) | adds a local FAST/WORKHORSE execution seat | **Claude verifier** (unchanged) | Local worker is never a reviewer — its seat evidence is a self-reported banner line, weaker than Codex's or Grok's, so it cannot even offer advisory review the way Codex/Grok do |
 
 **Every row's accepting verdict is the Claude verifier.** Off-family reviewers
 sharpen the read; they do not hold the gate, because neither Codex (requested-tier)
@@ -93,11 +96,11 @@ In either Discipline mode, the blind-verifier requirement becomes a **disclosed 
 
 ## Roles resolve to capability classes — never to dated model IDs
 
-| Class | Work it gets | Claude seat | Codex seat | Grok seat |
-|---|---|---|---|---|
-| **FRONTIER** | Architecture, ambiguous debugging, final judgment | LEAD, or a frontier-class subagent (`opus` / `fable` alias) | Top verified tier | `grok-4.6` — **advisory only** (review / second opinion), never the accepting verdict |
-| **WORKHORSE** | Well-specified implementation, tests, refactors | `sonnet` alias | Mid verified tier | `grok-4.6` under 200K; above it route to Claude |
-| **FAST** | Scanning, mechanical edits, extraction | `haiku` alias | Cheapest verified tier | — |
+| Class | Work it gets | Claude seat | Codex seat | Grok seat | Ollama seat |
+|---|---|---|---|---|---|
+| **FRONTIER** | Architecture, ambiguous debugging, final judgment | LEAD, or a frontier-class subagent (`opus` / `fable` alias) | Top verified tier | `grok-4.6` — **advisory only** (review / second opinion), never the accepting verdict | — never (no benchmark evidence exists for this seat) |
+| **WORKHORSE** | Well-specified implementation, tests, refactors | `sonnet` alias | Mid verified tier | `grok-4.6` under 200K; above it route to Claude | a coding-tuned local model, only for tightly-scoped, low-context tickets (ollama-workers.md) |
+| **FAST** | Scanning, mechanical edits, extraction | `haiku` alias | Cheapest verified tier | — | same local model as WORKHORSE, smaller tickets |
 
 **[references/model-matrix.md](references/model-matrix.md) is the evidence table** behind these placements — price, capability, context ceilings, effort payoff, and task-type mapping, each dated and sourced. Classes decide the tier; the matrix decides the seat within it. Use stable aliases, never dated model IDs. Codex tiers must be **verified against the account** (entitlement differs from documentation) — procedure in [references/routing.md](references/routing.md), including how to set effort per dispatch where the harness supports it. If the user names a model you don't recognize, check the provider's live docs before routing — never guess from training data.
 
@@ -137,7 +140,7 @@ Before the **first delegated dispatch of any run** — including single-worker r
 
 ## Hard rails
 
-1. Workers never spawn workers. Every ticket says so. **Carve-out:** a *transport wrapper* subagent may invoke a fixed-argv launcher — `scripts/codex-dispatch.sh` or `scripts/grok-dispatch.sh` — exactly once and relay its output. That is transport, not delegation. Each launcher pins its own argv (no raw `codex`/`grok` commands, no shell composition, no nested invocation), and the wrapper does no judgment, no edits, and spawns nothing (codex-workers.md, grok-workers.md). The carve-out covers only these launchers: a wrapper that hand-composes a provider command has broken contract.
+1. Workers never spawn workers. Every ticket says so. **Carve-out:** a *transport wrapper* subagent may invoke a fixed-argv launcher — `scripts/codex-dispatch.sh`, `scripts/grok-dispatch.sh`, or `scripts/ollama-dispatch.sh` — exactly once and relay its output. That is transport, not delegation. Each launcher pins its own argv (no raw `codex`/`grok`/`aider` commands, no shell composition, no nested invocation), and the wrapper does no judgment, no edits, and spawns nothing (codex-workers.md, grok-workers.md, ollama-workers.md). The carve-out covers only these launchers: a wrapper that hand-composes a provider command has broken contract.
 2. Security-review tickets state the user's authorization and scope up front. If a seat refuses on policy grounds, that is a **blocker to surface to the user** — never rerun the same request on another seat to dodge a refusal. (Choosing a seat known to handle defensive review reliably *before* dispatch is fine.)
 3. Synthesize worker output — never paste it through raw.
 4. You never implement while workers are working; you review, route, decide.
