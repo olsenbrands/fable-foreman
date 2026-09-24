@@ -30,7 +30,7 @@ because a run failed it.
 
 - The lead runs as `claude -p --model opus` (Opus 5.5) with `--permission-mode bypassPermissions` and stream-json output, in a fresh git repository under `~/foreman-evals/<run>/<scenario>/repo`. It is never under `/tmp`, because read-only Grok reviewers refuse `/tmp`.
 - The skill under test is copied into the repository as `.claude/skills/fable-foreman-v06/`, with its `name:` changed to match. This keeps the older globally installed `fable-foreman` from being loaded instead. The five `foreman-*` agents are copied into `.claude/agents/`.
-- `FOREMAN_HOME` points at a per-run eval home holding copies of the user's flags (`grok-preapproved`, `codex-preapproved`, `jev-enabled`). Evals therefore never append to the user's real `~/.foreman/crew-performance.md`.
+- `FOREMAN_HOME` points at a per-run eval home holding copies of the machine's pre-approval flags (`grok-preapproved`, `codex-preapproved`, `jev-enabled`). Evals therefore never append to the user's real `~/.foreman/crew-performance.md`.
 - An appended system note says: this is an unattended evaluation, so no one can answer questions; don't write notes-vault session logs; where the skill says to ask the user, put the question in the final message and continue with whatever work is already authorized. The note contains no routing hints.
 - Providers present: Claude, Codex (GPT-6 catalog, pre-approved), Grok (4.7/4.6, pre-approved), and Jev (opted in, reachable). The exception is T7, where Grok is swapped for a stub that fails with HTTP 402.
 

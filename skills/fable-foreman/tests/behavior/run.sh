@@ -5,7 +5,7 @@
 #
 # For each scenario: build a fresh fixture repo under ~/foreman-evals/<run-id>/<T>/,
 # install the skill under test as `fable-foreman-v06` plus the five agents into the
-# repo's .claude/, give it an isolated FOREMAN_HOME (copies of the user's flags,
+# repo's .claude/, give it an isolated FOREMAN_HOME (copies of the machine's pre-approval flags,
 # never the real crew record), run one headless Claude Code lead session, and save
 # the stream-json transcript for grade.py. Scenarios run in parallel.
 #

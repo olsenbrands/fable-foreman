@@ -260,7 +260,7 @@ the lead (Table 4 is the cost prior); this table places seats, nothing more.
 | Accepting verdict on a change (blind verifier) | FRONTIER | **Claude verifier** — the default evidence seat; **the lead accepts**. A **Grok 4.6 or GPT-6 Sol read-only reviewer** is the cross-family *second opinion*; GPT-6 Astra is stronger but premium (double approval) | any qualified reviewer (model + transport + allowed tools + assigned checks, with a named executor for every required deterministic check) may give a scoped verdict, its evidence tier disclosed | **a reviewer verdict alone as acceptance proof** |
 | Adversarial review / second opinion | FRONTIER-advisory | **Grok 4.6** (output-light, lowest volume), effort by lead judgment | GPT-6 Sol; Grok 4.7 when the review needs to run code; Astra only with double approval | — |
 | Hard, well-specified implementation | FRONTIER | **Opus** subagent or **Grok 4.7 at xhigh** (CA 56) | GPT-6 Astra (CA 62) only with the user's double approval | Luna |
-| Well-specified implementation, tests, refactors | WORKHORSE | **Grok 4.7** below the 200K cliff under pre-approval (the user's stated preference); **GPT-6 Sol** otherwise (CA 57, Codex's workhorse tier) | Sonnet 5 on pool grounds; Grok 4.6 where the record shows 4.7 regressing on this task shape | — |
+| Well-specified implementation, tests, refactors | WORKHORSE | **Grok 4.7** below the 200K cliff under pre-approval (when the user has pre-approved Grok); **GPT-6 Sol** otherwise (CA 57, Codex's workhorse tier) | Sonnet 5 on pool grounds; Grok 4.6 where the record shows 4.7 regressing on this task shape | — |
 | Large-context implementation (>200K) | WORKHORSE | **Sonnet 5** (no surcharge) | GPT-6 Sol (long-context tier above 272K) | **Grok (cliff)**, Haiku (200K cap) |
 | Mechanical edits, extraction, scanning | FAST | **GPT-6 Luna** | Haiku 4.5 | frontier seats |
 | Narrow typed triage (dedupe, support-check, rank, classify) — see jev.md | DECISION | **Jev** when opted in (advisory signal, ~$0.0002) | Luna / Haiku | Jev as acceptance, as a sole security gate, or on dates/arithmetic |
@@ -302,7 +302,7 @@ run halts only when nothing independent is left to do (delegation.md, First Law)
 
 ## Provenance of this table
 - Claude prices, cache pricing, effort levels, release dates: platform.claude.com model and pricing pages, 2026-09-23 (PRIMARY).
-- GPT-6 prices incl. long-context tier: developers.openai.com/api/docs/pricing, 2026-09-23 (PRIMARY). Codex tier positioning and effort levels: the Codex CLI's own model cache on this machine, 2026-09-24 (OBSERVED).
+- GPT-6 prices incl. long-context tier: developers.openai.com/api/docs/pricing, 2026-09-23 (PRIMARY). Codex tier positioning and effort levels: the Codex CLI's own model cache on the author's test machine, 2026-09-24 (OBSERVED).
 - Grok prices, 200K rule, 4.7 Fast pricing: docs.x.ai pricing, 2026-09-23 (PRIMARY). Grok model list and efforts: `grok models` + the CLI model cache, grok 1.0.41 (OBSERVED).
 - II v4.3, CA, output tokens per task, hallucination: artificialanalysis.ai articles on Opus 5.5, GPT-6 Astra, GPT-6 Sol/Luna, Grok 4.7 (2026-09-03 to 09-22). GPT-6 Sol/Luna II values are SECONDARY.
 - Grok pool rate: two live pings on this account, 2026-09-23 (OBSERVED).

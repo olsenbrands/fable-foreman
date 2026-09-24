@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2 — 2026-09-24
+
+### Fixed
+- Removed maintainer-specific details from the docs and test evidence: an absolute home
+  path in the fixture-4 evidence file, plus "this Mac", "the user's stated preference" and
+  "the user's flags" wording. Docs only, no behavior change. Test fixture 6 now starts its
+  local stub without a reverse-DNS lookup, which had timed it out on one machine.
+
 ## 0.6.1 — 2026-09-24
 
 ### Fixed
