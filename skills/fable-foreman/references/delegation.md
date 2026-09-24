@@ -143,6 +143,14 @@ apply. Apply the first matching row:
 | 4 | Failure at the top seat (or foreman takeover failed) | **Park this outcome** as `NEEDS USER` with the evidence and a concrete question; continue every independent authorized outcome; the run halts only when none remain |
 | 5 | Two consecutive failed **fix waves** against the same findings list | Recovery (below): exactly one changed-approach attempt, then park — regardless of seats remaining |
 
+**Micro-fix (not a takeover).** After the builder reports and no worker is writing
+that write set, the lead may correct **≤5 changed lines in tests, docstrings, comments
+or docs** itself — never production logic, configuration or data. It is logged
+`micro-fix: <files> — <cause>` with the diff hash, the real tests are re-run, and a
+**fresh** verifier assesses the result (the lead never certifies its own edit). It does
+not count as an attempt or a failure. Anything beyond that limit is an ordinary repair
+back to the builder, or a row-3 takeover.
+
 **Ticket corrections are bounded.** A third ticket correction on one outcome id with
 **no new observation** is treated as a real failure toward that outcome's limits, not
 a free retry: a repeated "bad ticket" classification is itself evidence that the seat,

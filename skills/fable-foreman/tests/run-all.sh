@@ -60,7 +60,7 @@ snapshot_real() {
 BEFORE_SNAP=$(snapshot_real)
 
 # ------------------------------------------------------------------------------
-FIXTURES="fixture-1-init-ledger.sh fixture-2-probe.sh fixture-3-crew-append.sh fixture-4-grok-transition.sh fixture-5-precedence.sh"
+FIXTURES="fixture-1-init-ledger.sh fixture-2-probe.sh fixture-3-crew-append.sh fixture-4-grok-transition.sh fixture-5-precedence.sh fixture-6-access.sh fixture-7-routing-card.sh"
 TOTAL_FAIL=0
 SUMMARY=""
 
@@ -99,7 +99,7 @@ fi
 printf '\n===== summary =====%s\n' "$SUMMARY"
 if [ "$TOTAL_FAIL" = "0" ]; then
   if [ "$SKIPPED" = "0" ]; then
-    printf 'ALL FIXTURES PASSED (1, 2, 3, 4, 5)\n'
+    printf 'ALL FIXTURES PASSED (1-7)\n'
   else
     printf 'ALL RUN FIXTURES PASSED; %s skipped (see the SKIPPED line above)\n' "$SKIPPED"
   fi

@@ -1,7 +1,7 @@
 {
   "name": "fable-foreman",
-  "description": "Turn Claude Fable or Opus into an agent orchestrator that plans coding work, assigns it to capable agents, and personally verifies the result.",
-  "version": "0.5.0",
+  "description": "Turn Claude Fable or Opus into an agent orchestrator that plans coding work, routes it to the right Claude, Codex or Grok worker from a per-machine routing card, and personally verifies the result.",
+  "version": "0.6.0",
   "author": {
     "name": "Jordan Olsen",
     "email": "support@dontsleeponai.com"
@@ -10,16 +10,20 @@
   "repository": "https://github.com/olsenbrands/fable-foreman",
   "license": "MIT",
   "keywords": [
-    "orchestration",
-    "model-routing",
-    "delegation",
-    "subagents",
     "codex",
+    "cost-matrix",
     "cost-optimization",
-    "multi-agent",
-    "verification",
+    "delegation",
+    "gpt-6",
     "grok",
-    "xai",
-    "cost-matrix"
+    "jev",
+    "model-routing",
+    "multi-agent",
+    "opus",
+    "orchestration",
+    "routing-card",
+    "subagents",
+    "verification",
+    "xai"
   ]
 }

@@ -56,6 +56,27 @@ if [ "$EFFORT" = "xhigh" ]; then
 fi
 
 [ -x "$GROK_BIN" ] || { echo "BLOCKED: grok binary not executable: $GROK_BIN" >&2; exit 69; }
+
+# Model-aware effort check from the CLI's own model cache (free, local). The
+# static 4.5 rule above stays as the fallback when no cache is readable. A
+# model absent from the cache is allowed through — the cache can lag a new
+# release, and Grok itself refuses an unknown id cheaply (failure mapping).
+GROK_MC="${GROK_HOME:-$HOME/.grok}/models_cache.json"
+if [ -s "$GROK_MC" ] && command -v python3 >/dev/null 2>&1; then
+  EFF_OK=$(python3 - "$GROK_MC" "$MODEL" "$EFFORT" <<'PYEOF' 2>/dev/null
+import json, sys
+mc, model, eff = sys.argv[1:4]
+m = (json.load(open(mc)).get("models") or {}).get(model)
+if not isinstance(m, dict):
+    print("unknown-model"); sys.exit(0)
+levels = [e.get("id") for e in (m.get("info") or {}).get("reasoning_efforts") or []]
+print("ok" if not levels or eff in levels else "no:" + "|".join(levels))
+PYEOF
+) || EFF_OK=""
+  case "$EFF_OK" in
+    no:*) echo "BLOCKED: model '$MODEL' does not support effort '$EFFORT' (supported: ${EFF_OK#no:})" >&2; exit 64 ;;
+  esac
+fi
 [ -f "$TICKET" ] || { echo "BLOCKED: ticket not found: $TICKET" >&2; exit 66; }
 [ -d "$WORKDIR" ] || { echo "BLOCKED: workdir not found: $WORKDIR" >&2; exit 66; }
 
@@ -194,11 +215,39 @@ import json, sys
 try:
     d = json.load(open(sys.argv[1], encoding="utf-8", errors="replace"))
 except Exception as e:
-    print(f"seat evidence: NONE (unparsable artifact: {e})"); sys.exit(0)
+    print(f"seat evidence: NONE (unparsable artifact: {e})")
+    try:
+        tail = open(sys.argv[1] + ".stderr", encoding="utf-8", errors="replace").read()[-4000:]
+    except OSError:
+        tail = ""
+    for kw, v in (("402", "BALANCE_EXHAUSTED"), ("usage balance", "BALANCE_EXHAUSTED"),
+                  ("not authenticated", "AUTH_FAILED"), ("401", "AUTH_FAILED"), ("429", "RATE_LIMITED")):
+        if kw in tail.lower():
+            print(f"GROK ACCESS: {v} (from stderr) — see the failure mapping in grok-workers.md"); break
+    sys.exit(0)
 if not isinstance(d, dict):
     print("seat evidence: NONE (artifact is not a JSON object)"); sys.exit(0)
+def access_verdict(text):
+    # Deterministic access classification (2026-09-23). Signed-in is not the
+    # same as usable: an exhausted Grok Build balance arrives as HTTP 402 on a
+    # billable call while `grok models` still reports "logged in".
+    t = text.lower()
+    if "402" in t or "usage balance" in t or "payment required" in t:
+        return "BALANCE_EXHAUSTED — Grok pool is down; stop Grok dispatches, re-route per the degradation rule, do not retry until the user restores capacity"
+    if "401" in t or "403" in t or "not authenticated" in t or "unauthorized" in t or "login" in t:
+        return "AUTH_FAILED — session expired or signed out; the user runs 'grok login' (never start it yourself)"
+    if "429" in t or "rate limit" in t or "too many requests" in t:
+        return "RATE_LIMITED — back off; count toward the precedence table, do not burn retries in place"
+    if "dns" in t or "connect" in t or "network" in t or "timed out" in t:
+        return "NETWORK — check whether this shell is sandboxed/offline before concluding Grok is down"
+    return None
 if d.get("type") == "error":
-    print(f'GROK ERROR: {d.get("message","(no message)")}'); sys.exit(0)
+    msg = d.get("message", "(no message)")
+    print(f'GROK ERROR: {msg}')
+    v = access_verdict(msg)
+    if v:
+        print(f'GROK ACCESS: {v}')
+    sys.exit(0)
 mu = d.get("modelUsage")
 if isinstance(mu, dict) and mu:
     print(f'seat: billed-tier evidence — modelUsage {", ".join(sorted(mu))} (NOT served-tier; not `verified`)')

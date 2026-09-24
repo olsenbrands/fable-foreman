@@ -29,11 +29,14 @@ Only after consent, run the functional check — one tiny call, cheapest tier yo
 
 Documentation is not entitlement, and **model IDs differ by auth mode** — this repo's own first review dispatch bounced because an API-doc model ID (`gpt-5.6`) wasn't valid for a ChatGPT-account login (which wanted `gpt-5.6-sol`). Procedure:
 
-1. Read `${CODEX_HOME:-$HOME/.codex}/config.toml` — the user's configured `model` and `model_reasoning_effort` are their expressed preference; identify what that model *is* before classifying it.
-2. Ask the user, or check `codex` interactive `/model` output, for the tiers their account actually offers.
-3. Before relying on any tier in a long run, verify it with one tiny echo call. A tier that fails entitlement goes in the ledger as unavailable.
+1. Read the catalog `scripts/probe.sh` prints from `${CODEX_HOME:-$HOME/.codex}/models_cache.json` — the Codex CLI's own list of the models this login sees, each with the provider's positioning text and its supported effort levels. It is free, local, and it is what the launcher validates effort against. (Check its `fetched_at`; the CLI refreshes it, and a stale cache can lag a release.)
+2. Read `${CODEX_HOME:-$HOME/.codex}/config.toml` — the user's configured `model` and `model_reasoning_effort` are their expressed preference; identify what that model *is* before classifying it. (On the author's machine the preference is the frontier tier, `gpt-6-astra` at `medium` — a user who pinned the flagship did not thereby make it your WORKHORSE, and a config default is **not** the double approval a premium seat needs; the launcher always passes `-m`, so the config default never silently runs.)
+3. If no catalog is readable, ask the user or check `codex` interactive `/model` output.
+4. Before relying on any tier in a long run, verify it with one tiny call — `scripts/access-check.sh codex` does this on the cheapest listed tier (`--model <id>` for another). A tier that fails entitlement goes in the ledger as unavailable (`CODEX ACCESS: MODEL_NOT_ENTITLED`).
 
 Map verified tiers to FRONTIER / WORKHORSE / FAST by the provider's published positioning for them (routing.md), and record the mapping in the ledger so it's auditable.
+
+**Two effort facts for GPT-6 (2026-09-23):** there is no `minimal` level, and `ultra` (Astra, Sol) means "maximum reasoning with automatic task delegation" — the worker splits its task across sub-agents it spawns itself. That is a worker spawning workers, so `scripts/codex-dispatch.sh` refuses `ultra` outright (hard rail 1); `max` is the deepest non-delegating level and is allowed. The Codex "Fast" service tier (priority processing) doubles usage and is never set by the launcher.
 
 **Effort is chosen per dispatch by the lead**, from the levels the verified model actually supports — the user's configured `model_reasoning_effort` is their expressed preference and the fallback when nothing else is known, not a ceiling on the lead's judgment. Never send a level the account's model does not support; verify it the same way you verify a tier, with one tiny call. model-matrix.md Table 4 is the *cost* prior, and the performance record overrides it.
 
@@ -47,7 +50,7 @@ Before v0.3 the skill shelled out to `codex exec` directly from the foreman's ow
 - **Notifications over polling:** the harness notifies the foreman on wrapper completion; no polling loops, no foreground blocking, and LOST detection rides the harness's own task tracking.
 - **Foreman stays free:** long Codex builds no longer occupy the foreman's attention between dispatch and collection.
 
-Cost: one FAST wrapper's tokens per dispatch (small; the wrapper does no thinking). Direct launcher invocation from the foreman's own Bash remains correct in CLI-only mode (no Agent tool) and for sub-minute advisory calls where wrapper overhead exceeds the benefit.
+Cost: one FAST wrapper's tokens per dispatch (small; the wrapper does no thinking). Direct launcher invocation from the foreman's own Bash remains correct in CLI-only mode (no Agent tool), for sub-minute advisory calls, and **for small FAST tickets** (a Luna job expected to finish in a few minutes): run the launcher from the lead's own shell (in the background only if the harness will notify you when it exits; otherwise in the foreground with a generous timeout), record its pid file in the dispatch register, and collect it like any worker — never end your turn while it is still running. That removes the wrapper step entirely, so "wrapper overhead" is never a reason to skip the card's Luna default.
 
 **The wrapper contract (put it in the wrapper's prompt verbatim):**
 
@@ -69,6 +72,8 @@ Cost: one FAST wrapper's tokens per dispatch (small; the wrapper does no thinkin
 | Observation | Treatment |
 |---|---|
 | Launcher exit nonzero | Worker `BLOCKED`; envelope + stderr artifact are the evidence |
+| Envelope prints `CODEX ACCESS: RATE_LIMITED/QUOTA` | The Codex pool is exhausted or throttled for this window: stop dispatching Codex, re-route the remainder per the degradation rule, journal it — never retry in place |
+| Envelope prints `CODEX ACCESS: AUTH_FAILED` / `MODEL_NOT_ENTITLED` | `BLOCKED` with that cause; AUTH → the user runs `codex login`; NOT_ENTITLED → mark the tier unavailable and re-map classes from the catalog |
 | Exit 0, no parseable status line in relayed message | `BLOCKED` (malformed report); artifact path in ledger |
 | Exit 0, empty final message / malformed JSONL | `BLOCKED`; artifact retained for diagnosis |
 | Wrapper itself silent past its deadline | Wrapper task is `LOST` — apply the LOST protocol (delegation.md) to the *wrapper*; then reconcile the workspace before any retry, because the inner Codex process may have kept editing after the wrapper died |

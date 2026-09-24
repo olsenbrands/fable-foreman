@@ -1,5 +1,159 @@
 # Changelog
 
+## 0.6.0 — 2026-09-23
+
+The "know what you can actually use" release. The model lineup changed under the
+skill in one month: Claude Opus 5.5, GPT-6 Astra/Sol/Luna, and Grok 4.7. Leads
+also kept failing to tell whether Grok was usable. This release rebuilds the
+evidence table on a single benchmark version, turns provider access into
+deterministic verdicts, and adds an optional Jev decision layer.
+
+### Added
+- **Live access verdicts** (`scripts/access-check.sh`) — one minimal call per
+  provider through the skill's own launchers, printing a fixed vocabulary
+  (`LIVE`, `SIGNED_IN`, `SIGNED_OUT`, `ENV_MISMATCH`, `BALANCE_EXHAUSTED`,
+  `AUTH_FAILED`, `RATE_LIMITED`, `KEY_REJECTED`, `NO_KEY`, `DISABLED`, …).
+  Billable pings run only under pre-approval or `--consented`.
+- **Probe: real Grok sign-in state** — `scripts/probe.sh` now runs `grok models`
+  under a bounded wait and parses the sign-in line. It closes three traps
+  observed on the author's machine: the command exits 0 when signed out and
+  prints a built-in fallback model list; a sandboxed or HOME-redirected shell
+  looks signed out (now `ENV-MISMATCH`, not "absent"); and signed in does not
+  prove capacity (an HTTP 402 balance exhaustion only shows on a real call).
+  It also prints the account's live Grok list and newest base model.
+- **Probe: Codex catalog** — the Codex CLI's own model cache is printed with
+  each model's positioning text and supported efforts, so classes are mapped
+  from the provider's words rather than remembered names.
+- **Launchers name access failures** — `grok-dispatch.sh` prints
+  `GROK ACCESS: BALANCE_EXHAUSTED | AUTH_FAILED | RATE_LIMITED | NETWORK`, and
+  `codex-dispatch.sh` prints `CODEX ACCESS: RATE_LIMITED/QUOTA | AUTH_FAILED |
+  MODEL_NOT_ENTITLED`, with matching failure-mapping rows.
+- **Jev decision layer (optional)** — `scripts/jev-decide.py` (stdlib Python:
+  opt-in gate, key resolution without printing, pre-spend validation of question
+  types and the 32K/64K limits, timeout, envelope) and `references/jev.md`
+  (eight recipes ranked by value, hard rules, and a shadow-mode graduation test).
+  Advisory only: it never accepts, never gates security, and never handles
+  dates or arithmetic.
+- **Fixture 6** (`tests/fixture-6-access.sh`, 35 cases) — stubbed Grok states
+  (signed in, signed out, credentials-but-signed-out, hang, HTTP 402),
+  per-model effort refusals, `ultra` refusal, and the Jev launcher against a
+  local stub endpoint, including a no-key-leak check.
+
+- **Behavioral suite** (`tests/behavior/`). SPEC.md was written before any run. Seven
+  scenarios: trivial inline, farm-out, cross-family build and verify, Jev triage, user
+  constraints and `ultra`, frontier judgment, and dead-pool recovery. Each is a real
+  headless Claude Code lead run against a scratch repo with hidden answer keys, graded
+  deterministically from the transcript. Final run: 7/7 scenarios pass every MUST
+  (`tests/behavior/RESULTS-2026-09-23.md`).
+
+- **Routing card** (`scripts/routing-card.py`, `references/routing-defaults.json`) — the
+  single answer to "which seat for this job" on this machine. It joins live access,
+  consent flags, dated suggestions, saved recon verdicts, and the user's earlier answers.
+  - **Settled rows** are defaults that need an allowed, logged reason to deviate.
+    "Transport overhead" is explicitly not one.
+  - **Close calls** (everyday coding: Grok 4.7 / GPT-6 Sol / Sonnet 5; hard coding:
+    Astra / Opus / Grok) produce one grouped, plain-language question with a
+    recommendation. The answer is remembered for the session with `remember
+    --session`, offered back in later sessions within 30 days in the same project,
+    and never applied silently. Unattended runs start from a printed judgment prior.
+  - **`NEW MODELS` / `STALE`** trigger one bounded recon pass. Its verdicts are saved
+    with an expiry (`recon-record`), so the same model is not researched every session.
+  - The card **fails closed** when a model list can't be parsed, and shows
+    "needs consent" for providers the user has not pre-approved.
+  - Fixture 7 covers all of this (30 cases).
+- **Premium seats need double approval** (user direction, 2026-09-24). GPT-6 Astra and
+  Claude Fable are never dispatched as a subagent, worker, reviewer, verifier or fallback
+  unless the user said yes twice in the current session: once to the ask, and once to a
+  confirmation naming the model and its cost.
+  - Record the approval with `routing-card.py approve-premium <model> --session <id>
+    --confirmed`. It never carries into another session.
+  - The Codex launcher refuses `gpt-6-astra` without `FOREMAN_PREMIUM_APPROVED`.
+  - The card's defaults and fallbacks were rewritten to avoid premium seats: hard coding
+    starts from Opus; verifier and review fallbacks use GPT-6 Sol and Grok 4.6;
+    high-risk review uses Grok 4.6 at high plus Sol.
+  - A premium LEAD is unaffected.
+  - Fixtures 6–7 cover the gate. Behavioral check 0.5 and scenarios T14–T15 test it.
+- **Micro-fix allowance** (user decision, 2026-09-24). After the builder reports, the lead
+  may correct ≤5 lines in tests, docstrings, comments or docs itself instead of a repair
+  round-trip. It is logged as `micro-fix`, followed by the real tests and a **fresh**
+  verifier, and is never allowed for production logic. The micro-fix and the three
+  existing lead-edit cases (trivial inline, one-command change, recorded takeover) are
+  now listed together in hard rail 4. Run 10 observed both sides: a 1-line fix done by
+  the lead, and a larger fix sent back to the builder.
+- **Three-model skill review** (GPT-6 Sol, Grok 4.7, Opus 5.5, all at medium). The
+  adopted suggestions:
+  - SKILL.md restructured around a 9-step run order (about 5,300 → 2,900 words); mode
+    and provider tables moved to routing.md; every other seat menu defers to the card
+  - foreman-verifier dispatched with `model: "opus"` (it previously inherited a Fable
+    lead's price)
+  - Grok 4.6 as the default off-family reviewer, with Astra for high-risk changes
+  - a light lane for one-ticket jobs
+  - mandatory Jev shadow calls reduced to recipes 1–2
+  - the Haiku-scout "wrapper overhead" exception removed
+  - a `bar` deviation reason, so the First Law can still overrule a settled default
+    when the lead names the risk
+
+  Deferred: performance-record summaries on the card, and behavioral scenarios for
+  fan-out LOST handling, compaction recovery, and a Fable lead.
+- **Behavioral runs 6–8** on the restructured skill: 13 scenarios, all passing every MUST
+  on their latest run.
+  - Leads routed mechanical work to GPT-6 Luna, everyday coding to Grok 4.7 (the
+    judgment prior), off-family review to Grok 4.6, and verification to Opus.
+  - They asked the single plain-language question when a human was present, respected
+    the missing Codex consent, and never used an unevaluated model.
+  - One real rule break remains on record: a lead patched two of Luna's docstrings
+    itself.
+  - New rule from the runs: never end a turn with a worker in flight in headless runs.
+
+### Changed
+- **Dispatch gate:** a change one deterministic command completes (a codemod or
+  `perl -pi` rename) is run inline. The gate is about model-written work.
+- **Jev trigger:** eligible recipes run in shadow mode even when the lead triages inline.
+- **Off-family review when Claude builds:** add a read-only Codex or Grok review, or log
+  the reason for skipping it. In testing it caught two gaps the Claude verifier missed.
+- **Model matrix rebuilt** (`references/model-matrix.md`) on Artificial
+  Analysis v4.3 only, with output tokens per task alongside list price. Opus 5.5
+  (58, $4/$20) becomes the default frontier Claude subagent, ahead of Fable 5.1
+  (53, $10/$50). GPT-6 Luna ($0.10/$0.50) becomes the FAST seat. GPT-6 Sol is the
+  Codex *workhorse*: the name moved class from GPT-5.6, where Sol was the
+  flagship. GPT-6 Astra is the Codex frontier tier. Grok 4.7 becomes the
+  implementation default (Coding Agent Index 56 vs 47) and Grok 4.6 the
+  output-light reviewer, because 4.7 emits ~2x the output tokens. The measured
+  Grok pool rate is now ~0.34x list (it was 0.17x in August).
+- **Effort validation is per model** — both launchers read the CLI's own model
+  cache and refuse an effort level the model does not list, before spending.
+  Codex `max` is now allowed. Codex `ultra` is refused outright because it
+  auto-delegates to sub-agents (hard rail 1).
+- **Newest-model rule for Grok** — the newest base model is the implementation
+  default. A new release is proven on a representative ticket against the
+  previous one before a fan-out leans on it, and any regression fallback is
+  scoped to that task shape.
+- **LEAD advice** — a one-time, informational Step 0 note is allowed when another
+  frontier seat is both higher-scoring and cheaper than the LEAD. The mid-run
+  "never switch frontier models" rule is unchanged.
+- `probe.sh` no longer reports the default `https://api.anthropic.com` base URL
+  as a gateway.
+
+### Evidence
+- Live on the author's machine, 2026-09-23: `access-check.sh all` returned
+  Grok LIVE (grok-4.7), Codex LIVE (gpt-6-luna), and Jev DISABLED. With a
+  scratch opt-in, the Jev check caught a rejected key through the free
+  key endpoint, spending nothing. With a valid key, the live check
+  showed that OpenRouter rejects the `typesafe/jev-latest` alias. The default is
+  now the exact id `typesafe/jev-1.13`, which returned REACHABLE (0.24 s,
+  ~$0.00001). A `model:` override and a `MODEL_NOT_FOUND` verdict were added. Fixtures 1–6 pass, including fixture 4 live.
+- Blind A/B routing test: two Sonnet readers answered 12 scenarios from the v0.5
+  and v0.6 skill files: v0.5 scored 6 correct, 2 partial, 4 wrong, and it
+  reproduced the "Grok looks unavailable" bug; v0.6 scored 12/12
+  (`tests/evidence/ab-routing-2026-09-23.md`).
+- Cross-family review: GPT-6 Astra (read-only, through the updated Codex
+  launcher) returned FAIL with six findings. Five were confirmed and fixed with
+  regression cases: the Jev check accepted an empty 200, provider error bodies
+  could echo a key, the probe timeout could hang on a SIGTERM-ignoring child, a
+  failed `codex login status` read as signed out, and a nonexistent `--live`
+  flag was advertised. The sixth (effort validation fails open without a model
+  cache) is kept by design and now documented.
+
 ## 0.5.0 — 2026-09-07
 
 The "policy reconciliation" release. Every rule that let a provider family, a

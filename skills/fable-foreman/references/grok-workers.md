@@ -2,40 +2,101 @@
 
 xAI's Grok CLI is an optional accelerator, alongside Codex — never a requirement. When present, it adds a third family of worker seats. Everything below is sourced from direct execution on the author's machine (2026-08-17/18; the raw run artifacts are machine-local and not shipped), the launcher script (`scripts/grok-dispatch.sh`), and the cost/capability tables in [model-matrix.md](model-matrix.md) — nothing here is asserted from general knowledge of Grok.
 
-## The probe (once per session, cache the result)
+## The probe (once per session, cache the result) — and why access used to be ambiguous
 
-```bash
-command -v grok || ls "$HOME/.grok/bin/grok"   # 1. installed?
-"$HOME/.grok/bin/grok" --version               # 2. binary alive — which build?
-grok models                                    # 3. authenticated? which models does THIS account see?
-```
+**Access is a ladder, and each rung needs its own evidence.** Earlier versions of
+this skill conflated the rungs, and leads repeatedly could not tell whether Grok was
+usable: one session concluded "CLI unauthenticated" from a sandboxed shell while the
+user was signed in; another saw "logged in" while every dispatch was failing with an
+exhausted balance. The rungs, and what proves each:
 
-- Honor `GROK_BIN` if the environment sets it — the launcher and probe resolve the binary the same way: `$GROK_BIN` if set, then `grok` on PATH, then `$GROK_HOME/bin/grok` (default `~/.grok/bin/grok`). Verified path on this machine: `~/.grok/bin/grok -> ~/.grok/downloads/grok-macos-aarch64`.
-- Step 3 does two jobs at once — it is both the auth check and the tier-discovery call. `grok models` reported "logged in with grok.com" together with the model list (`grok-4.6` default, `grok-4.5`) in one output. No separate `grok auth status` equivalent has been verified on this build; don't invent one.
-- Verified build: Grok CLI 1.0.5 (5115b46bc909), macOS arm64, OAuth/OIDC session auth against grok.com — a subscription, not an API key (see Billing).
-- Same GNU-`timeout` caveat as Codex: it doesn't exist on stock macOS or Windows. Use your shell tool's own timeout, set generously (60s+) — a slow response is latency, not absence.
+| Rung | Question | Evidence (cost) | Who checks it |
+|---|---|---|---|
+| 1. Installed | Does the binary run? | `grok --version` (free) | `scripts/probe.sh` |
+| 2. Signed in | Does the CLI see a grok.com session **from this shell**? | `grok models` prints `You are logged in with …` (free) | `scripts/probe.sh` → `grok access: SIGNED-IN` |
+| 3. Usable | Will a dispatch actually run (balance, entitlement, network)? | one billable ping through the launcher (~$0.007) | `scripts/access-check.sh grok` → `ACCESS grok: LIVE` |
+
+Three traps, each observed on the author's machine and each now handled by the scripts:
+
+- **`grok models` exits 0 even when signed out** and then prints a *built-in fallback*
+  model list (`grok-4.6`, `grok-4.5` on 1.0.41), not the account's. Exit status proves
+  nothing; only the `You are logged in` / `You are not authenticated` line does, and a
+  model list is the account's only when the first line says logged in. (OBSERVED
+  2026-09-23 with an empty `GROK_HOME`.)
+- **A sandboxed or HOME-redirected shell looks signed out.** If `~/.grok/auth.json`
+  exists but the CLI says `not authenticated`, the probe reports **`ENV-MISMATCH`**,
+  not absence: re-run the probe outside the sandbox (or with the real `HOME` /
+  `GROK_HOME`) before concluding anything. Never report "Grok unavailable" from this
+  state alone.
+- **Signed in is not usable.** An exhausted Grok Build balance arrives only on a
+  billable call, as `API error (status 402 Payment Required): Grok Build usage balance
+  exhausted` (OBSERVED 2026-09-21), while `grok models` still says logged in. The
+  launcher now prints `GROK ACCESS: BALANCE_EXHAUSTED` for it.
+
+So the rule is: **run `scripts/probe.sh` (rungs 1–2, free), then `scripts/access-check.sh
+grok` (rung 3) before the first real dispatch of a session**, and ledger the verdict
+line verbatim. `access-check.sh` refuses the billable ping unless Grok is pre-approved
+or you pass `--consented` after the user agreed. One verdict per session is enough —
+until a dispatch reports otherwise (failure mapping below).
+
+- Honor `GROK_BIN` if the environment sets it — the launcher, probe, and access check
+  resolve the binary the same way: `$GROK_BIN` if set, then `grok` on PATH, then
+  `$GROK_HOME/bin/grok` (default `~/.grok/bin/grok`).
+- Verified build: Grok CLI 1.0.41 (2026-09-22), macOS arm64, OAuth/OIDC session auth
+  against grok.com — a subscription, not an API key (see Billing). The CLI updates
+  itself often; re-read `grok --version` and the model list rather than trusting this line.
+- No GNU `timeout` on stock macOS or Windows: the scripts use their own bounded wait
+  (45 s for `grok models`, override with `FOREMAN_PROBE_TIMEOUT`). A slow response is
+  latency, not absence.
 
 ## Billing (subscription session — ordinary budget discipline applies)
 
-The verified account on this machine authenticates via an OAuth/OIDC session against grok.com, not an API key — a subscription, the same shape as a ChatGPT-subscription Codex login, not metered per call against a card. **Opt-in pre-approval (user-set, per machine, added 2026-09-04):** if `scripts/probe.sh` reports `grok billing: PRE-APPROVED (user config)` (`~/.foreman/grok-preapproved` exists, or `FOREMAN_GROK_PREAPPROVED=1`), skip the consent ask, journal `Grok: pre-approved by user config`, dispatch `grok-4.6` for implementation and review with **effort chosen per dispatch by the lead** (with no performance evidence yet, the prior is the highest level the model supports — pre-approval removes the consent ask, it does not fix a level), and fan out up to the parallel ceiling the flag file names (default 15 — the user ran 15 concurrent Grok 4.6 workers comfortably on this Mac; a reported successful default, not a measured maximum — see Quota notes). Without the flag, treat Grok spend under the ordinary rule: journal it, and step a Grok dispatch down or stop under budget pressure exactly as for any other seat.
+The verified account on this machine authenticates via an OAuth/OIDC session against grok.com, not an API key — a subscription, the same shape as a ChatGPT-subscription Codex login, not metered per call against a card. **Opt-in pre-approval (user-set, per machine, added 2026-09-04):** if `scripts/probe.sh` reports `grok billing: PRE-APPROVED (user config)` (`~/.foreman/grok-preapproved` exists, or `FOREMAN_GROK_PREAPPROVED=1`), skip the consent ask, journal `Grok: pre-approved by user config`, dispatch Grok (the newest base model for implementation, `grok-4.6` for output-light review — see tiers below) with **effort chosen per dispatch by the lead** (with no performance evidence yet, the prior is the highest level the model supports — pre-approval removes the consent ask, it does not fix a level), and fan out up to the parallel ceiling the flag file names (default 15 — the user ran 15 concurrent Grok 4.6 workers comfortably on this Mac; a reported successful default, not a measured maximum — see Quota notes). Without the flag, treat Grok spend under the ordinary rule: journal it, and step a Grok dispatch down or stop under budget pressure exactly as for any other seat.
 
-What "spend" means concretely: every `--output-format json` call returns a `total_cost_usd` field in the envelope, which the launcher parses and prints. Real dispatches observed this session: a trivial echo ~$0.010; a one-file schema review ~$0.015; writing a module plus tests and running them ~$0.021 (20s, 4 turns); resuming a session to add validation and re-run tests ~$0.014 (26s, 4 turns). Treat published list prices (model-matrix.md Table 1) as an **upper bound**, not the bill — a real 6-turn Grok 4.6 review on this account billed at a flat 0.17x-of-list pool rate (model-matrix.md). Where the envelope reports a real cost, that number wins over any table.
+What "spend" means concretely: every `--output-format json` call returns a `total_cost_usd` field in the envelope, which the launcher parses and prints. Real dispatches observed this session: a trivial echo ~$0.010; a one-file schema review ~$0.015; writing a module plus tests and running them ~$0.021 (20s, 4 turns); resuming a session to add validation and re-run tests ~$0.014 (26s, 4 turns). Treat published list prices (model-matrix.md Table 1) as an **upper bound**, not the bill — this account's envelopes have reported pool rates of 0.17x list (2026-08) and ~0.34x list (2026-09-23) — the rate moves, so never hardcode it (model-matrix.md). Where the envelope reports a real cost, that number wins over any table.
 
-Functional check before the first real dispatch of a session: through the launcher, never a raw `grok` call — write a one-line ticket `Reply with exactly: ok` to `<abs>/.foreman/scratch/ping.md` and run `<abs-skill-dir>/scripts/grok-dispatch.sh <abs>/.foreman/scratch/ping.md grok-4.6 low read-only <abs>/.foreman/scratch/ping.json <abs-repo>`; the envelope's `exit code: 0` plus a `seat:` line confirms the session is live.
+Functional check before the first real dispatch of a session: `scripts/access-check.sh grok` — it runs the free sign-in check, then one `Reply with exactly: ok` ticket through the launcher on the newest base model, and prints `ACCESS grok: LIVE — …` (or the exact failure state). Never a raw `grok` call.
 
-## Discovering the account's tiers
+## Discovering the account's tiers — and picking the newest one wisely
 
-`grok models` is authoritative and, on this build, sufficient by itself — no account-mode ID-splitting (the kind that bit Codex, where ChatGPT-login and API-key IDs differ) has been observed for Grok. This account sees exactly two models: `grok-4.6` (default) and `grok-4.5`.
+`grok models` (when it says logged in) is authoritative for *which* models this
+account sees; the CLI's `~/.grok/models_cache.json` is authoritative for *which
+effort levels each model accepts*, and both launchers read it. `scripts/probe.sh`
+prints the live list and the **newest base model** (the highest `grok-X.Y` with no
+suffix). As of 2026-09-23 this account sees:
 
-Effort levels are **per-model**, not universal, and this matters for dispatch safety:
+| Model | Efforts | Context | Price (list) | Role |
+|---|---|---|---|---|
+| `grok-4.7` (CLI default) | low, medium, high (vendor default, "Recommended"), xhigh | 500K | $2 / $6 | **default implementation seat** |
+| `grok-4.7-build-fast` | same | 500K | **2x** ($4 / $12) | wall-clock emergencies only |
+| `grok-4.6` | low, medium, high, xhigh | 500K | $2 / $6 | output-light reviewer; fallback where 4.7 regresses |
+| `grok-4.5` | low, medium, high (**no xhigh**) | 500K | $2 / $6 | last-resort fallback |
 
-- `grok-4.6`: `low`, `medium`, `high`, `xhigh` (models_cache.json reports `reasoning_effort: high` as the model default; the launcher always sets effort explicitly, so no default is ever relied on).
-- `grok-4.5`: `low`, `medium`, `high` only — **no `xhigh`**. Sending `xhigh` to `grok-4.5` is a hard error (exit 1, `unknown effort level 'xhigh'; use one of: high, medium, low`), not a silent downgrade. This **disproves** a third-party claim (surfaced by research, flagged unverified) that Grok 4.5 silently downgrades an `xhigh` request. The launcher enforces this itself before spending a turn (see Transport).
-- Both models report a 500,000-token context window and an 80% `auto_compact_threshold_percent`.
+**4.7 vs 4.6 — the evidence, not the hype.** Artificial Analysis (PRIMARY,
+2026-09-21): Coding Agent Index 56 vs 47, Terminal-Bench 4.0 33% vs 18%, DeepSWE 73%
+vs 65%, hallucination 29% vs 34% — but Intelligence Index only 46 vs 44, and 4.7 at
+`xhigh` emits **~81K output tokens per task vs ~38K** for 4.6. The "mixed reviews" are
+mostly about that token burn (and tighter guardrails in chat use), not a measured
+coding regression; none was found. On this account a one-word ping cost 222 output
+tokens on 4.7 vs 12 on 4.6 at `low` (one sample — a hint, not a measurement). So:
 
-Map verified tiers to routing classes per model-matrix.md rather than duplicating its tables here: Grok 4.6 is a first-choice **implementation** seat (FRONTIER for hard well-specified tickets, WORKHORSE for the bulk — the user's standing instruction of 2026-09-04: "he's a GREAT coder… use him for coding too") and the first-choice **adversarial-review** seat, both at an effort level the lead chooses per dispatch (model-matrix.md Table 4 is the cost prior, not a rule) and both bounded by the 200K-token context cliff (Table 3) — above that, route to a Claude seat instead of paying the Grok surcharge. What a Grok reviewer supplies is *evidence*; the lead accepts, and a reviewer verdict alone is never acceptance proof (Reading back). Grok 4.5 is a lower-capability fallback (index 56, and the launcher refuses `xhigh` against it because the level does not exist) — reach for it only when 4.6 is unavailable.
+The routing card decides which of these a job gets (everyday coding is a close call between Grok 4.7, GPT-6 Sol and Sonnet 5; review rows default to Grok 4.6). The evidence behind those rows:
 
-As general hygiene (routing.md's Currency rule), verify a tier with one tiny call before leaning on it for a long run — this build has shown no entitlement surprises so far, but that is not the same guarantee as "verified this run."
+- **Implementation (agentic coding, anything that runs tools or tests): `grok-4.7`.**
+- **Adversarial review / analysis (output-light, reasoning over text): `grok-4.6`** is
+  the value default; 4.7 when the review must execute code.
+- **When a newer Grok appears** (probe prints a new newest-base-model), do not assume
+  it is better for every task shape: take the first ticket of the next fan-out through
+  both the new and the previous model (the "prove an unproven repeated pattern on a
+  representative early artifact" rule, SKILL.md) and let the performance record decide.
+  Until then the newest model is the implementation default and the previous one the
+  review default.
+- **Regression fallback is per task shape, not global.** If the record shows 4.7
+  failing where 4.6 succeeded on a shape, route that shape to 4.6 and journal why.
+
+Effort is **per model** and read from the cache — the launcher refuses a level the
+model does not list, before spending. `grok-4.5` has no `xhigh` (a hard error, exit 1,
+not a silent downgrade — verified 2026-08-17).
 
 ## Transport: visible subagent wrapper first, direct launcher call as fallback
 
@@ -88,6 +149,8 @@ What the launcher pins into the actual `grok` invocation once validation passes:
 | Exit 0, no parseable status line in the relayed final message — on a *reviewer* ticket a verdict first line (`PASS` / `FAIL` / `PASS_WITH_NOTES`) parses as well as a worker status | `BLOCKED` (malformed report); artifact path in ledger |
 | Exit 0, empty final message or unparsable JSON artifact | `BLOCKED`; artifact retained for diagnosis |
 | Wrapper itself silent past its deadline | Wrapper task is `LOST` — apply the LOST protocol to the *wrapper* (delegation.md); check `<artifact>.pid`, kill the child if still live, and only then reconcile the workspace |
+| Envelope prints `GROK ACCESS: BALANCE_EXHAUSTED` (HTTP 402) | The Grok pool is down for this run: stop dispatching Grok, collect every live Grok worker (hard rail 5), re-route the remainder per the degradation rule, journal it, and tell the user once — never retry into a 402 |
+| Envelope prints `GROK ACCESS: AUTH_FAILED` / `RATE_LIMITED` / `NETWORK` | `BLOCKED` with that cause; AUTH → the user runs `grok login`; RATE_LIMITED → counts toward the precedence table, back off; NETWORK → check whether this shell is sandboxed/offline before concluding Grok is down |
 | Envelope reports `seat: billed-tier evidence …` | Normal and expected — record it; it is **not** `seat: verified` (see Reading back) |
 | Envelope reports `CONTEXT ALERT` (average prompt per model call above 200000) | Do not send Grok another ticket carrying the *same context set or a superset* (same working files/paths plus the same or a longer resumed session) for the rest of this run — a fresh, smaller ticket may still use Grok; when unsure, don't. Re-route and journal it (model-matrix.md Table 3) |
 | Relayed message does not match the artifact | Wrapper contract breach; use the artifact, ledger `wrapper relay: unreliable`, and do not reuse that wrapper seat this run |
@@ -110,13 +173,13 @@ in the marketplace repo; resolve it once, and pass every argument as an absolute
 
 # Implementation work — writable workspace:
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/.foreman/scratch/ticket-N.md grok-4.6 high workspace \
+  <abs-repo>/.foreman/scratch/ticket-N.md grok-4.7 high workspace \
   <abs-repo>/.foreman/scratch/artifact-N.json <abs-repo>
 
 # Continuing a prior dispatch's session (verified: the worker recalled code
 # from the earlier turn without it being re-sent):
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/.foreman/scratch/ticket-N-followup.md grok-4.6 high workspace \
+  <abs-repo>/.foreman/scratch/ticket-N-followup.md grok-4.7 high workspace \
   <abs-repo>/.foreman/scratch/artifact-N2.json <abs-repo> <sessionId-from-artifact-N>
 
 # Schema-locked review — note the EMPTY 7th (resume) slot before the schema:

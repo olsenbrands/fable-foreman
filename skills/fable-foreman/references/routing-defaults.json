@@ -1,0 +1,319 @@
+{
+  "_about": "Machine-readable routing suggestions behind scripts/routing-card.py — the single authority for WHICH SEAT a job gets. Evidence and sources: model-matrix.md. 'settled' = the evidence clearly favors one seat: use it unless an allowed deviation reason applies. 'close' = reasonable seats differ by task: ask the user once per run (grouped, plain language) or, when unattended or told 'use your judgment', start from judgment_prior. Durable recon findings are promoted here; bump 'verified'.",
+  "verified": "2026-09-24",
+  "stale_after_days": 14,
+  "prefs_expire_days": 30,
+  "known_models": {
+    "claude": [
+      "opus",
+      "fable",
+      "sonnet",
+      "haiku"
+    ],
+    "codex": [
+      "gpt-6-astra",
+      "gpt-6-sol",
+      "gpt-6-luna",
+      "gpt-reserve",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "gpt-5.5",
+      "codex-auto-review"
+    ],
+    "grok": [
+      "grok-4.7",
+      "grok-4.7-build-fast",
+      "grok-4.6",
+      "grok-4.5"
+    ]
+  },
+  "never_request": {
+    "gpt-reserve": "reported Luna-class quota fallback pool (SECONDARY); not a seat to request",
+    "codex-auto-review": "Codex's internal approval reviewer, not a worker seat",
+    "grok-4.7-build-fast": "same class as grok-4.7 at 2x price; only when the user asks for speed"
+  },
+  "allowed_deviation_reasons": [
+    "provider-down: the access check or a dispatch showed the seat unusable this session",
+    "consent: the seat's provider needs the user's consent and does not have it yet",
+    "context: the ticket exceeds the seat's context ceiling or crosses its price cliff",
+    "bar: the lead judges the seat cannot clear this ticket's quality bar (First Law) — name the specific risk; the record then tests the judgment",
+    "user: the user asked for a different seat (this session or in the prompt)",
+    "record: the performance record shows the seat failing on this task shape",
+    "tools: the ticket needs a tool or transport the seat lacks",
+    "task-fit: close-call rows only — a named strength of another listed option matters for this ticket",
+    "exempt: a behavior-exempt change needs no extra seat (review rows only)"
+  ],
+  "forbidden_reasons": [
+    "transport overhead",
+    "wrapper overhead",
+    "a Claude worker is simpler",
+    "the job is small"
+  ],
+  "jobs": [
+    {
+      "id": "mechanical",
+      "label": "Mechanical model work: bulk docstrings, annotations, extraction, scanning, repetitive edits a single command cannot do",
+      "class": "FAST",
+      "kind": "settled",
+      "evidence": "list-price + benchmark (Luna measured, Haiku 4.5 not on v4.3)",
+      "default": [
+        {
+          "provider": "codex",
+          "model": "gpt-6-luna",
+          "effort": "low or medium"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "claude",
+          "model": "haiku"
+        }
+      ],
+      "why": "Luna ~$0.02 per 4-turn dispatch vs Haiku ~$0.19 (list); small Luna tickets use the direct launcher, no wrapper (codex-workers.md)."
+    },
+    {
+      "id": "standard-coding",
+      "label": "Well-specified implementation, tests, refactors",
+      "class": "WORKHORSE",
+      "kind": "close",
+      "options": [
+        {
+          "provider": "grok",
+          "model": "grok-4.7",
+          "effort": "lead judgment",
+          "why": "Coding Agent Index 56; $2/$6; ~2x output tokens of 4.6; 200K price cliff",
+          "plain": "Grok 4.7 — cheapest per ticket and uses your Grok plan; weaker on very large files"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-sol",
+          "effort": "lead judgment",
+          "why": "Coding Agent Index 57; $2/$10; Codex's workhorse tier; 272K context",
+          "plain": "GPT-6 Sol — about as strong, uses your ChatGPT plan"
+        },
+        {
+          "provider": "claude",
+          "model": "sonnet",
+          "effort": "high",
+          "why": "in-harness subagent, 1M context with no surcharge; draws on the lead's own Claude allowance; no v4.3 score",
+          "plain": "Claude Sonnet 5 — best for very large files; uses the same Claude allowance I run on"
+        }
+      ],
+      "judgment_prior": "grok-4.7",
+      "ask_topic": "everyday coding tickets"
+    },
+    {
+      "id": "hard-coding",
+      "label": "Hard but well-specified implementation (tricky algorithms, concurrency, cross-cutting changes)",
+      "class": "FRONTIER",
+      "kind": "close",
+      "options": [
+        {
+          "provider": "claude",
+          "model": "opus",
+          "effort": "high",
+          "why": "Intelligence Index 58; $4/$20; in-harness; draws on the lead's own Claude allowance",
+          "plain": "Claude Opus 5.5 — top overall reasoning; uses the same Claude allowance I run on"
+        },
+        {
+          "provider": "grok",
+          "model": "grok-4.7",
+          "effort": "xhigh",
+          "why": "Coding Agent Index 56 at a fraction of the price; emits ~2x output at xhigh",
+          "plain": "Grok 4.7 at maximum effort — far cheaper, uses your Grok plan"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "premium": true,
+          "effort": "high",
+          "why": "PREMIUM (double approval): Coding Agent Index 62, Terminal-Bench 4.0 59%; $10/$50",
+          "plain": "GPT-6 Astra — strongest measured coder, premium price (needs your double approval)"
+        }
+      ],
+      "judgment_prior": "opus",
+      "ask_topic": "the hardest coding tickets"
+    },
+    {
+      "id": "frontier-judgment",
+      "label": "Architecture, ambiguous debugging, final judgment",
+      "class": "FRONTIER",
+      "kind": "settled",
+      "evidence": "policy",
+      "default": [
+        {
+          "provider": "claude",
+          "model": "LEAD",
+          "effort": "session"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "claude",
+          "model": "opus"
+        },
+        {
+          "provider": "grok",
+          "model": "grok-4.7",
+          "effort": "xhigh",
+          "sandbox": "read-only"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "premium": true
+        }
+      ],
+      "why": "judgment stays with the lead; a second frontier opinion uses opus, or Grok 4.7 cross-family; Astra and Fable only with the user's double approval"
+    },
+    {
+      "id": "blind-verifier",
+      "label": "Independent verification of any behavior-changing change",
+      "class": "FRONTIER",
+      "kind": "settled",
+      "evidence": "policy",
+      "default": [
+        {
+          "provider": "claude",
+          "model": "opus",
+          "effort": "high",
+          "note": "Agent tool: subagent_type foreman-verifier, model \"opus\" (the agent file inherits the lead's model otherwise)"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "codex",
+          "model": "gpt-6-sol",
+          "effort": "high",
+          "sandbox": "read-only"
+        },
+        {
+          "provider": "grok",
+          "model": "grok-4.6",
+          "effort": "high",
+          "sandbox": "read-only"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "premium": true,
+          "effort": "high",
+          "sandbox": "read-only"
+        }
+      ],
+      "no_agent_tool": "No Agent tool: use a fallback reviewer under the disclosed reduced-assurance rule (SKILL.md) — do not park.",
+      "why": "no-edit tool contract plus mutation backstop; required for every behavior-changing acceptance"
+    },
+    {
+      "id": "off-family-review",
+      "label": "Off-family read-only review when Claude built a behavior-changing change",
+      "class": "FRONTIER-advisory",
+      "kind": "settled",
+      "evidence": "one observed catch (2026-09-23) + output-price math",
+      "default": [
+        {
+          "provider": "grok",
+          "model": "grok-4.6",
+          "effort": "medium",
+          "sandbox": "read-only"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "codex",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox": "read-only"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "premium": true,
+          "effort": "medium",
+          "sandbox": "read-only"
+        }
+      ],
+      "escalate": "High-risk changes (security boundaries, data migrations, anything irreversible): run Grok 4.6 at high AND a GPT-6 Sol read-only review; GPT-6 Astra only with the user's double approval this session.",
+      "why": "a same-family verifier shares the builder's blind spots; Grok 4.6 is the cheapest output-light reviewer; confirm every Grok citation"
+    },
+    {
+      "id": "adversarial-review",
+      "label": "Adversarial plan or design review, second opinions",
+      "class": "FRONTIER-advisory",
+      "kind": "settled",
+      "evidence": "output-price math + one live plan review",
+      "default": [
+        {
+          "provider": "grok",
+          "model": "grok-4.6",
+          "effort": "medium",
+          "sandbox": "read-only"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "codex",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox": "read-only"
+        },
+        {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "premium": true,
+          "effort": "medium",
+          "sandbox": "read-only"
+        }
+      ],
+      "why": "output-light work at the lowest output price; confirm every citation (hallucination ~34%)"
+    },
+    {
+      "id": "large-context",
+      "label": "Implementation needing more than ~200K tokens of context",
+      "class": "WORKHORSE",
+      "kind": "settled",
+      "evidence": "published pricing rules",
+      "default": [
+        {
+          "provider": "claude",
+          "model": "sonnet",
+          "effort": "high"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "codex",
+          "model": "gpt-6-sol"
+        }
+      ],
+      "why": "Grok reprices the whole request 2x at 200K; Sonnet has no length surcharge"
+    },
+    {
+      "id": "triage",
+      "label": "Merging findings from 2+ reviewers, checking cited findings (Jev recipes 1–2)",
+      "class": "DECISION",
+      "kind": "settled",
+      "evidence": "one benchmark + our metadata pilot",
+      "default": [
+        {
+          "provider": "jev",
+          "model": "jev",
+          "effort": "n/a"
+        }
+      ],
+      "fallbacks": [
+        {
+          "provider": "lead",
+          "model": "inline"
+        }
+      ],
+      "why": "~$0.0002 per call; shadow mode until a recipe graduates (jev.md)"
+    }
+  ],
+  "premium_models": {
+    "gpt-6-astra": "Codex frontier tier, ~5x GPT-6 Sol's price per token",
+    "fable": "Claude Fable, ~2.5x Opus 5.5's price per token"
+  },
+  "premium_rule": "Premium models are never used as subagents or workers unless the user approved them TWICE in this session (a yes to the ask, then a yes to one confirmation that names the model and its cost). Approval lasts only for the session, is never carried into another session, and is never inferred from a pre-approval flag. A LEAD that is itself a premium model is fine; this rule governs dispatches."
+}
