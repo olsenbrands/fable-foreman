@@ -9,7 +9,7 @@
     {
       "name": "fable-foreman",
       "description": "Turn Claude Fable or Opus into an agent orchestrator that plans coding work, routes it to the right Claude, Codex or Grok worker from a per-machine routing card, and personally verifies the result.",
-      "version": "0.6.3",
+      "version": "0.6.4",
       "source": "./",
       "author": {
         "name": "Jordan Olsen",

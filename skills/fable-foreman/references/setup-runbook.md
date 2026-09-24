@@ -61,3 +61,12 @@ Re-running Part B is safe only because every write above is guarded (pin verifie
 **Known gateway side effect:** any `ANTHROPIC_BASE_URL` gateway disables Claude Code's tool-schema deferral, inflating boot context (claudemix author measured 164k → 41k tokens after setting `ENABLE_TOOL_SEARCH=true`). Do not "fix" this with `CLAUDE_CODE_AUTO_COMPACT_WINDOW` — it clamps the effective limit downward.
 
 When Part B is active, Codex seats may be dispatched as native subagents instead of wrapper subagents; everything else in the skill (tickets, statuses, Layer 0 provenance, verification) applies unchanged — provenance evidence just comes from the splitter log instead of `codex --json`.
+
+## Jev (optional decision layer)
+
+Jev needs the user's own key and the user's own opt-in. Never create the flag file or store a key yourself; walk the user through it.
+
+1. **Key:** an OpenRouter account with credit (model `typesafe/jev-1.13`) or a TypeSafe account (typesafe.ai). Either key works.
+2. **Where the key lives:** `OPENROUTER_API_KEY` / `TYPESAFE_API_KEY` in the environment, or a macOS keychain item the user creates (`security add-generic-password -s <service> -a "$USER" -w`) named on the flag file's `keychain-service:` line.
+3. **Opt-in:** the user creates `~/.foreman/jev-enabled` with `provider:`, optional `keychain-service:`, `privacy:` and `model:` lines (format in jev.md).
+4. **Proof:** `scripts/access-check.sh jev` must print `REACHABLE`. `NO_KEY`, `KEY_REJECTED`, `NO_CREDIT`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `TRANSPORT_FAILED` or `DISABLED` each name the fix. The skill works identically without Jev.

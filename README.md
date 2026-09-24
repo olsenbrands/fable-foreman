@@ -1,8 +1,38 @@
 # Fable Foreman: Turn Claude Fable into your agent orchestrator
 
+<img src="assets/jev-logo.svg" width="20" height="20" alt="Jev logo" align="top"> **Now with Jev** — optional, near-free triage that keeps the lead focused. [Set it up](#make-sure-jev-works).
+
 Fable Foreman teaches Claude Fable or Opus, the lead, to plan coding work, assign it to capable agents, and personally verify the result. The lead stays responsible for the outcome while smaller, lower-cost workers handle suitable implementation, testing, and repairs.
 
 This repository is free under the MIT license. Claude Code is required for full orchestration; Codex, Grok and TypeSafe Jev are optional.
+
+## <img src="assets/jev-logo.svg" width="32" height="32" alt="Jev logo" align="top"> Now with Jev
+
+[Jev](https://docs.typesafe.ai), from TypeSafe AI, is a decision model rather than a chatbot. It answers narrow yes/no, pick-one and score questions in under a second, for about 0.02 cents a call. Fable Foreman uses it to point the lead's attention at the right things:
+
+- **Merging review findings.** When two or more reviewers report problems, Jev spots the duplicates, so the lead reads each problem once.
+- **Checking evidence.** It flags findings whose quoted evidence doesn't back up the claim, so they get a second look before anyone acts on them.
+- **Finding comparable past jobs.** It picks the entries in your performance record that match the job at hand, so routing learns from real results.
+- **Screening worker reports.** It flags reports that tell a story without showing evidence, test failures worth looking at first, instructions hidden in tool output, and acceptance criteria nobody could check.
+
+Jev only sorts what the lead looks at. It never accepts work, never makes security decisions, and never deletes a finding. If Jev is missing or fails, the skill carries on exactly as it would without it.
+
+### Make sure Jev works
+
+1. **Get a key from either place:**
+   - **OpenRouter:** sign up at [openrouter.ai](https://openrouter.ai), add a few dollars of credit, and create an API key. Jev is listed there as `typesafe/jev-1.13`.
+   - **TypeSafe directly:** sign up at [typesafe.ai](https://typesafe.ai) and create an API key.
+2. **Store the key where the skill can find it.** Either export `OPENROUTER_API_KEY` (or `TYPESAFE_API_KEY`) in your shell profile, or save it in the macOS keychain. The keychain command asks you to paste the key:
+   ```bash
+   security add-generic-password -s jev-openrouter -a "$USER" -w
+   ```
+3. **Turn Jev on.** Create `~/.foreman/jev-enabled`. Your agent never creates this file for you:
+   ```text
+   provider: openrouter          # or: typesafe
+   keychain-service: jev-openrouter
+   privacy: metadata             # or: snippets, to allow short text excerpts
+   ```
+4. **Check it.** In a Claude Code session, ask your agent to run the skill's access check for Jev (`scripts/access-check.sh jev` in the skill folder). `REACHABLE` means it works. Any other answer names the problem, such as `NO_KEY`, `KEY_REJECTED` or `NO_CREDIT`.
 
 ## What's new in 0.6
 
