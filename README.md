@@ -1,12 +1,12 @@
 # Fable Foreman: Turn Claude Fable into your agent orchestrator
 
-<img src="assets/jev-logo.svg" width="20" height="20" alt="Jev logo" align="top"> **Now with Jev** — optional, near-free triage that keeps the lead focused. [Set it up](#make-sure-jev-works).
+<img src="assets/jev-logo.png" width="20" height="20" alt="Jev logo" align="top"> **Now with Jev** — optional, near-free triage that keeps the lead focused. [Set it up](#make-sure-jev-works).
 
 Fable Foreman teaches Claude Fable or Opus, the lead, to plan coding work, assign it to capable agents, and personally verify the result. The lead stays responsible for the outcome while smaller, lower-cost workers handle suitable implementation, testing, and repairs.
 
 This repository is free under the MIT license. Claude Code is required for full orchestration; Codex, Grok and TypeSafe Jev are optional.
 
-## <img src="assets/jev-logo.svg" width="32" height="32" alt="Jev logo" align="top"> Now with Jev
+## <img src="assets/jev-logo.png" width="32" height="32" alt="Jev logo" align="top"> Now with Jev
 
 [Jev](https://docs.typesafe.ai), from TypeSafe AI, is a decision model rather than a chatbot. It answers narrow yes/no, pick-one and score questions in under a second, for about 0.02 cents a call. Fable Foreman uses it to point the lead's attention at the right things:
 
