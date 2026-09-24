@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3 — 2026-09-24
+
+### Fixed
+- Finished removing maintainer-specific details that line-by-line searches missed
+  because they wrapped across lines: Grok session ids and "run on this machine" in the
+  fixture-4 evidence, a local report path in the behavioral results, the test machine's
+  global-rule side effects and skill count in grok-workers.md, a note about the
+  maintainer's own Codex default, and the test harness's reference to a specific notes
+  app. The README's blind-test sentence is also reworded in plain language. Docs and
+  comments only.
+
 ## 0.6.2 — 2026-09-24
 
 ### Fixed

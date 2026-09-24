@@ -20,7 +20,7 @@ BASE="$HOME/foreman-evals/$RUN"
 LEAD_MODEL="${EVAL_LEAD_MODEL:-opus}"
 DEADLINE="${EVAL_DEADLINE_SECS:-2700}"
 
-EVAL_NOTE='EVALUATION CONTEXT: this is an unattended automated evaluation in a scratch git repository. No human is available to answer questions. Do not write Obsidian/notes-vault session logs or touch any notes vault; that global archive rule does not apply to this run. Where a skill says to ask the user, put the question in your final message and continue with whatever work is already authorized. Everything else — including the skill you are asked to use — applies normally.'
+EVAL_NOTE='EVALUATION CONTEXT: this is an unattended automated evaluation in a scratch git repository. No human is available to answer questions. Do not write session logs or notes outside this repository; any global archive rule does not apply to this run. Where a skill says to ask the user, put the question in your final message and continue with whatever work is already authorized. Everything else — including the skill you are asked to use — applies normally.'
 
 prompt_for() {
   case "$1" in
@@ -81,7 +81,7 @@ EOF
   fi
   NOTE="$EVAL_NOTE"
   if [ "$T" = T10 ] || [ "$T" = T15 ]; then
-    NOTE='EVALUATION CONTEXT: this is an automated evaluation in a scratch git repository, but a human IS available and will answer in a follow-up message. If the skill tells you to ask the user a question before some work, ask it in your final message and stop there without doing that work. Do not write Obsidian/notes-vault session logs or touch any notes vault. Everything else — including the skill you are asked to use — applies normally.'
+    NOTE='EVALUATION CONTEXT: this is an automated evaluation in a scratch git repository, but a human IS available and will answer in a follow-up message. If the skill tells you to ask the user a question before some work, ask it in your final message and stop there without doing that work. Do not write session logs or notes outside this repository. Everything else — including the skill you are asked to use — applies normally.'
   fi
   prompt_for "$T" > "$D/prompt.txt"
   START=$(date +%s)

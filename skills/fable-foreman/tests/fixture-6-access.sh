@@ -158,7 +158,7 @@ class H(http.server.BaseHTTPRequestHandler):
         self.send_response(200); self.end_headers(); self.wfile.write(json.dumps(out).encode())
 import socketserver
 # TCPServer, not HTTPServer: HTTPServer.server_bind does a reverse-DNS getfqdn() that
-# took 35 s on one test Mac (2026-09-24) and timed this fixture out.
+# took 35 s on one test machine (2026-09-24) and timed this fixture out.
 s = socketserver.TCPServer(("127.0.0.1", 0), H)
 open(sys.argv[1], "w").write(str(s.server_address[1])); s.serve_forever()
 EOF

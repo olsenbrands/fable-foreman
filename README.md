@@ -20,7 +20,7 @@ This repository is free under the MIT license. Claude Code is required for full 
 - **Tested on real runs.**
   - A new behavioral suite runs real Claude Code leads through 15 scenarios, including farming out work, cross-family review, following your constraints, recovering from a dead provider, and asking before using premium models.
   - A deterministic grader scores each run from its actual tool calls, with hidden answer keys. Every scenario passed on its most recent run. These are single runs, not a statistical success rate; details are in [the results](skills/fable-foreman/tests/behavior/RESULTS-2026-09-23.md).
-  - In a blind comparison on 12 routing questions, a reader of 0.5 got 6 right, 2 partly right and 4 wrong. A reader of 0.6 got all 12 right.
+  - In a blind test, an AI model answered 12 routing questions using only the skill's instructions: with the 0.5 instructions it got 6 right, 2 partly right and 4 wrong; with the 0.6 instructions it got all 12 right.
 
 ## What it helps you do
 
