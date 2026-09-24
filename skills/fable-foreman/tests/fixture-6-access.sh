@@ -156,11 +156,14 @@ class H(http.server.BaseHTTPRequestHandler):
         assert body["model"] and body["questions"]["q"]["type"] == "noul"
         out = {"model": "jev-1.13.0", "answers": {"q": {"noul": 0.93}}, "usage": {"input_tokens": 42}}
         self.send_response(200); self.end_headers(); self.wfile.write(json.dumps(out).encode())
-s = http.server.HTTPServer(("127.0.0.1", 0), H)
-open(sys.argv[1], "w").write(str(s.server_port)); s.serve_forever()
+import socketserver
+# TCPServer, not HTTPServer: HTTPServer.server_bind does a reverse-DNS getfqdn() that
+# took 35 s on one test Mac (2026-09-24) and timed this fixture out.
+s = socketserver.TCPServer(("127.0.0.1", 0), H)
+open(sys.argv[1], "w").write(str(s.server_address[1])); s.serve_forever()
 EOF
 python3 "$TMP/stub.py" "$TMP/port" & STUB_PID=$!
-wait_until 5 '[ -s "$TMP/port" ]'
+wait_until 20 '[ -s "$TMP/port" ]'
 PORT=$(cat "$TMP/port")
 run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/ok" python3 "$JEV" run "$TMP/req.json" "$TMP/o2.json" > "$TMP/j5" 2>&1
 assert_eq       "6.9 stub 200: exit 0"            "0" "$?"
