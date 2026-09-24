@@ -1,9 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- README: the Jev logo is now the supplied artwork, `assets/jev-logo.png`, replacing the
+  reconstructed SVG. Docs only.
+
 ## 0.6.4 — 2026-09-24
 
 ### Added
-- README: a "Now with Jev" section near the top, with the Jev logo (`assets/jev-logo.png`),
+- README: a "Now with Jev" section near the top, with the Jev logo (`assets/jev-logo.svg`),
   what Jev does for the lead, and a four-step checklist to make sure it works: a key
   from OpenRouter or TypeSafe, where to store it, the `~/.foreman/jev-enabled` opt-in,
   and `scripts/access-check.sh jev`.
