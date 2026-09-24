@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1 — 2026-09-24
+
+### Fixed
+- SKILL.md no longer contains `$` followed by a digit. The skill loader treats `$0`, `$1`
+  and so on as placeholders for invocation arguments, so the Jev cost "~$0.0002" showed
+  up as garbled text whenever the skill was invoked with arguments. Fixture 7 now guards
+  against it (7.10).
+
 ## 0.6.0 — 2026-09-23
 
 The "know what you can actually use" release. The model lineup changed under the

@@ -111,4 +111,8 @@ assert_contains "7.9 approval does not carry into another session" "$TMP/c9b" "n
 assert_absent "7.9 premium choice never offered back next session" "$TMP/c9b" "you chose gpt-6-astra"
 run approve-premium sonnet --session P1 --confirmed > /dev/null 2>&1; assert_eq "7.9 non-premium model refused by approve-premium" "64" "$?"
 
+# The skill loader substitutes $0, $1, ... in SKILL.md with invocation arguments
+# (observed 2026-09-24: "~$0.0002" rendered as "~<args>.0002"). Keep SKILL.md free of them.
+if grep -nE '\$[0-9]' "$HERE/../SKILL.md" > "$TMP/dollars"; then fail "7.10 SKILL.md has \$N argument placeholders: $(head -1 "$TMP/dollars")"; else pass "7.10 SKILL.md has no \$N argument placeholders"; fi
+
 finish "fixture 7 (routing card)"
