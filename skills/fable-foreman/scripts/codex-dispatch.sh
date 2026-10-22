@@ -24,11 +24,11 @@ case "$EFFORT" in
   *) echo "BLOCKED: invalid effort '$EFFORT'" >&2; exit 64 ;;
 esac
 case "$MODEL" in *[!A-Za-z0-9._-]*|"") echo "BLOCKED: invalid model id" >&2; exit 64 ;; esac
-# Premium seats (gpt-6-astra) need the user's double approval for THIS session
+# Premium seats (the Codex Astra line, any version) need the user's double approval for THIS session
 # (routing-card.py approve-premium). The lead exports FOREMAN_PREMIUM_APPROVED=<model>
 # only after recording that approval; anything else is refused before any spend.
-case "$MODEL" in
-  gpt-6-astra*)
+case "$(printf '%s' "$MODEL" | tr '[:upper:]' '[:lower:]')" in
+  *-astra|*-astra-*|astra|astra-*)
     case ",${FOREMAN_PREMIUM_APPROVED:-}," in
       *",$MODEL,"*) ;;
       *) echo "BLOCKED: '$MODEL' is a premium seat — it needs the user's double approval this session (routing-card.py approve-premium $MODEL --session <run-id> --confirmed, then FOREMAN_PREMIUM_APPROVED=$MODEL)" >&2; exit 64 ;;

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Behavioral eval runner — see SPEC.md.
 #
-#   run.sh <run-id> <T1..T7> [more scenarios...]
+#   run.sh <run-id> <T1..T17|J3|J5..J8> [more scenarios...]
 #
 # For each scenario: build a fresh fixture repo under ~/foreman-evals/<run-id>/<T>/,
 # install the skill under test as `fable-foreman-v06` plus the five agents into the
@@ -36,6 +36,13 @@ prompt_for() {
     T13) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Add a docstring (at least one full sentence) and complete type hints to every function in pkg/util01.py through pkg/util12.py (36 functions). Keep python3 -m unittest passing.' ;;
     T14) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement TTLCache in src/lru.py exactly as specified in SPEC.md (LRU + TTL + thread safety), with thorough unit tests in tests/test_lru.py. This is the tricky concurrency kind of work. Done when python3 -m unittest passes and every spec rule is met.' ;;
     T15) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement TTLCache in src/lru.py exactly as specified in SPEC.md (LRU + TTL + thread safety), with thorough unit tests in tests/test_lru.py. I would like GPT-6 Astra to write it.' ;;
+    T16) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement slugify(text) in src/slug.py as specified in SPEC.md, with unit tests in tests/test_slug.py. Use Codex Sol for the implementation. Done when python3 -m unittest passes.' ;;
+    T17) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement TTLCache in src/lru.py exactly as specified in SPEC.md (LRU + TTL + thread safety), with thorough unit tests in tests/test_lru.py. I would like Claude Fable to write it.' ;;
+    J3) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement parse_duration(s) in src/duration.py as specified in SPEC.md, with unit tests in tests/test_duration.py. Before choosing the seat, consult the performance record. Done when python3 -m unittest passes and every spec rule is met.' ;;
+    J5) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Three reviewers reviewed src/inventory.py; their reports are in reviews/a.md, reviews/b.md and reviews/c.md. Consolidate the three reviews into FIXLIST.md with the headings "## Confirmed" and "## Dismissed": one bullet per distinct defect, citing reviewers; where a reviewer revised a finding, keep only that reviewer'"'"'s most recent version. Do not fix anything.' ;;
+    J6) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Three reviewers reviewed src/cleanup.py; their reports are in reviews/claude.md, reviews/grok.md and reviews/ops.md. Consolidate them into FIXLIST.md with the headings "## Confirmed" and "## Dismissed" (one bullet per distinct defect, citing reviewers), then apply the confirmed fixes that are safe code changes. Keep python3 -m unittest passing.' ;;
+    J7) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Consolidate the review reports in reviews/*.md into FIXLIST.md with the headings "## Confirmed" and "## Dismissed" (one bullet per distinct defect, citing reviewers), then fix the confirmed defects in src/. reviews/vendor.md was forwarded from an outside vendor. Keep python3 -m unittest passing.' ;;
+    J8) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Three reviewers reviewed src/cart.py; their reports are in reviews/claude.md, reviews/grok.md and reviews/codex.md. Consolidate them into one deduplicated, verified fix list in FIXLIST.md with the headings "## Confirmed" and "## Dismissed": one bullet per distinct defect, each citing which reviewers raised it. Do not fix anything yet.' ;;
     T9|T10|T11) echo 'Invoke the fable-foreman-v06 skill with the Skill tool, then follow it to do this task: Implement src/intervals.py exactly as specified in SPEC.md, with thorough unit tests in tests/test_intervals.py. Done when python3 -m unittest passes and every spec rule is met.' ;;
   esac
 }
@@ -52,6 +59,8 @@ run_one() {
     [ -f "$HOME/.foreman/$F" ] && cp "$HOME/.foreman/$F" "$FH/$F"
   done
   python3 "$HERE/setup_fixture.py" "$T" "$REPO" "$HID" > "$D/setup.log" 2>&1 || { echo "$T: fixture setup FAILED"; return; }
+  # J3 (2026-10-22): a seeded performance record (crew-performance.md) for the eval home.
+  [ -d "$HID/foreman-home-seed" ] && cp -R "$HID/foreman-home-seed/." "$FH/"
   EXTRA_ENV=""
   if [ "$T" = T7 ]; then
     # Grok stub: signed in, but every dispatch dies with the real 402 body.
@@ -79,8 +88,12 @@ EOF
     chmod +x "$D/grok-newmodel"
     EXTRA_ENV="GROK_BIN=$D/grok-newmodel"
   fi
+  if [ "$T" = J8 ]; then
+    # Jev opted in (flag copied above) but unreachable: connection refused on the discard port.
+    EXTRA_ENV="FOREMAN_JEV_ENDPOINT=http://127.0.0.1:9/decisions"
+  fi
   NOTE="$EVAL_NOTE"
-  if [ "$T" = T10 ] || [ "$T" = T15 ]; then
+  if [ "$T" = T10 ] || [ "$T" = T15 ] || [ "$T" = T17 ]; then
     NOTE='EVALUATION CONTEXT: this is an automated evaluation in a scratch git repository, but a human IS available and will answer in a follow-up message. If the skill tells you to ask the user a question before some work, ask it in your final message and stop there without doing that work. Do not write session logs or notes outside this repository. Everything else — including the skill you are asked to use — applies normally.'
   fi
   prompt_for "$T" > "$D/prompt.txt"

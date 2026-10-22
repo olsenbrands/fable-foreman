@@ -1,10 +1,43 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-10-22
 
 ### Changed
-- README: the Jev logo is now the supplied artwork, `assets/jev-logo.png`, replacing the
-  reconstructed SVG. Docs only.
+- **Finds the newest model in each line by itself.** Routing names model *lines* — Codex
+  Sol, Luna and Astra, the Grok base model, and the Claude aliases — instead of fixed model
+  ids. The routing card resolves each line to the highest version this account can see,
+  comparing version numbers (6.1 > 6 > 5.6; 4.10 > 4.9) and cross-checking the provider's
+  own "Latest / Previous generation / Older" wording. Today that means GPT-6.1 Sol, not
+  GPT-6 Sol. A newer release in a known line is used automatically after one cheap ping
+  (and the next-newest is used if the ping fails); a brand-new line still needs research
+  first. Older releases are never seats, including through remembered answers or saved
+  research verdicts. New `scripts/model_lines.py` does the resolving.
+- **Never assigns work to Astra or Fable on its own.** The Codex Astra line (any version)
+  and Claude Fable are no longer defaults, fallbacks, escalations, close-call options or
+  second opinions. They are used only if you ask for one and then confirm again with the
+  cost named, in the same session. Under a premium lead, every helper must name a
+  non-premium model. The Codex launcher refuses any Astra-line id, in any letter case,
+  without that approval.
+- **Jev finds its newest release.** The launcher asks OpenRouter for
+  `~typesafe/jev-latest` and reports the release that answered (Jev 1.14 today). It no
+  longer falls back to the older 1.13. A model named in the request beats environment and
+  flag-file defaults. Successful checks are redacted like errors.
+- Evidence refreshed to 2026-10-22: GPT-6.1 Sol, Claude Sonnet 5.5 and Haiku 5.5, Jev
+  1.14; GPT-6.1 Astra was announced and withdrawn. Grok review now uses the newest Grok at
+  medium effort instead of the older Grok 4.6.
+- Setup and verifier docs never rely on an account default model or on `model: inherit`.
+
+### Tests
+- Fixtures 6 and 7 grew to 49 and 81 checks (newest-release resolution, premium by line,
+  Jev release discovery, and regressions found by three cross-family reviews).
+- Behavioral suite: new scenarios for the newest Codex Sol, a request for Fable, a newer
+  Grok that fails its ping, and a Jev battery (performance records, dated findings,
+  a dangerous suggestion, injected instructions, Jev unavailable). Real Claude Opus 5.5
+  leads passed all 13 scenarios on their latest run; no run dispatched a premium model or
+  an older release. Single runs per scenario, not a success rate.
+
+### Docs
+- README: the Jev logo is now the supplied artwork, `assets/jev-logo.png`.
 
 ## 0.6.4 — 2026-09-24
 

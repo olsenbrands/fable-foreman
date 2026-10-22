@@ -20,7 +20,7 @@ Jev only sorts what the lead looks at. It never accepts work, never makes securi
 ### Make sure Jev works
 
 1. **Get a key from either place:**
-   - **OpenRouter:** sign up at [openrouter.ai](https://openrouter.ai), add a few dollars of credit, and create an API key. Jev is listed there as `typesafe/jev-1.13`.
+   - **OpenRouter:** sign up at [openrouter.ai](https://openrouter.ai), add a few dollars of credit, and create an API key. Jev is listed there as `typesafe/jev-1.14`; the skill always asks for the newest release.
    - **TypeSafe directly:** sign up at [typesafe.ai](https://typesafe.ai) and create an API key.
 2. **Store the key where the skill can find it.** Either export `OPENROUTER_API_KEY` (or `TYPESAFE_API_KEY`) in your shell profile, or save it in the macOS keychain. The keychain command asks you to paste the key:
    ```bash
@@ -33,6 +33,14 @@ Jev only sorts what the lead looks at. It never accepts work, never makes securi
    privacy: metadata             # or: snippets, to allow short text excerpts
    ```
 4. **Check it.** In a Claude Code session, ask your agent to run the skill's access check for Jev (`scripts/access-check.sh jev` in the skill folder). `REACHABLE` means it works. Any other answer names the problem, such as `NO_KEY`, `KEY_REJECTED` or `NO_CREDIT`.
+
+## What's new in 0.7
+
+- **Always uses the newest model in each family — and finds it by itself.** The lead no longer relies on a fixed list of model names. It reads what your accounts can actually use and picks the newest release in each model line. Today that means GPT-6.1 Sol rather than the older GPT-6 Sol. When a provider ships a newer version, the lead switches to it after one quick test call. A brand-new kind of model still gets researched first.
+- **Never hands work to the most expensive models on its own.** Codex Astra (any version) and Claude Fable are never picked automatically, never used as a backup, and never suggested as an option. They are used only if you ask for one and then confirm again once the lead names the cost.
+- **Jev updates itself too.** The skill asks for the newest Jev release and records which one answered (Jev 1.14 today).
+- **Up to date with October 2026 models:** GPT-6.1 Sol, Claude Sonnet 5.5 and Haiku 5.5, Grok 4.7, Jev 1.14.
+- **Tested on real runs.** Thirteen scenarios, each run by a real Claude Opus 5.5 lead, all passed on their latest run. They cover picking the newest Codex Sol, a newer Grok that fails its test call, asking for Fable, and a battery of Jev situations: merging reviews, dated findings, a dangerous suggestion, instructions hidden in forwarded text, and Jev being unavailable. No run sent work to Astra or Fable, and no run used an outdated model. These are single runs, not a statistical success rate.
 
 ## What's new in 0.6
 
@@ -113,7 +121,7 @@ Both copies are required. The skill calls `foreman-scout`, `foreman-worker`, `fo
 
 **What is the optional Jev layer?** [TypeSafe Jev](https://docs.typesafe.ai) is a decision model, not a chatbot. It answers narrow yes/no, pick-one, and score questions for a tiny fraction of the cost of an AI model call. If you opt in with your own TypeSafe or OpenRouter key, the lead can use it for sorting jobs: spotting duplicate review findings, flagging findings whose quoted evidence doesn't back them up, and finding comparable past jobs. Jev only reorders what the lead reviews. It never accepts work and never makes security decisions. Without it, the skill works exactly the same.
 
-**Will it use the most expensive models behind my back?** No. GPT-6 Astra and Claude Fable are "premium" models. Fable Foreman never hands work to either one unless you approve it twice in the same session: once when it asks, and again when it confirms the model and its cost. That approval ends with the session. If Fable itself is leading your session, that's fine; the rule is about the helpers it hires.
+**Will it use the most expensive models behind my back?** No. Codex Astra (any version) and Claude Fable are "premium" models. Fable Foreman never picks either one on its own; it uses one only if you ask for it and approve it twice in the same session: once when it asks, and again when it confirms the model and its cost. That approval ends with the session. If Fable itself is leading your session, that's fine; the rule is about the helpers it hires.
 
 **Will it reduce my AI costs?** It is designed to spend effort where it helps: capable lower-cost workers for suitable tasks, focused review, and fewer repeated handoffs. Actual cost depends on the work, models, and repairs. Savings are not guaranteed.
 

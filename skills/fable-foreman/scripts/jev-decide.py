@@ -40,12 +40,18 @@ import urllib.error
 import urllib.request
 
 ENDPOINTS = {
-    # OpenRouter accepts only exact versions: "typesafe/jev-latest" and
-    # "typesafe/jev-1.13.0" both return 400 "does not exist" (OBSERVED
-    # 2026-09-23). The alias works on TypeSafe's own endpoint only.
-    "openrouter": ("https://openrouter.ai/api/alpha/decisions", "typesafe/jev-1.13"),
+    # OpenRouter's "~typesafe/jev-latest" alias tracks the newest Jev release
+    # (OBSERVED 2026-10-22: it served typesafe/jev-1.14-20261014). The plain
+    # "typesafe/jev-latest" is refused. The response's "model" field names the
+    # release that actually answered — pin that for the rest of the session.
+    "openrouter": ("https://openrouter.ai/api/alpha/decisions", "~typesafe/jev-latest"),
     "typesafe": ("https://api.typesafe.ai/v1/systemone", "jev-latest"),
 }
+# Tried in order when the default alias is refused as unknown (400 "does not
+# exist"); never used when the user or flag file pinned a model.
+# Only the newest release we know of — never an older one (an older Jev is
+# superseded; if both refuse, the lead's deterministic fallback takes over).
+FALLBACK_MODELS = {"openrouter": ["typesafe/jev-1.14"], "typesafe": []}
 OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
 # Documented limits (docs.typesafe.ai/models, checked 2026-09-23): 32K state
 # tokens, 64K request tokens. Tokens are not counted here; bytes/4 is a
@@ -96,10 +102,29 @@ def resolve_key(settings):
     return None, settings.get("provider", "openrouter"), "none"
 
 
-def endpoint_for(provider, settings=None):
+def endpoint_for(provider, settings=None, request_model=None):
+    """Precedence: a model named in the request > FOREMAN_JEV_MODEL > the flag file's model: > the default alias."""
     url, model = ENDPOINTS.get(provider, ENDPOINTS["openrouter"])
-    model = (settings or {}).get("model") or model
-    return os.environ.get("FOREMAN_JEV_ENDPOINT", url), os.environ.get("FOREMAN_JEV_MODEL", model)
+    model = request_model or os.environ.get("FOREMAN_JEV_MODEL") or (settings or {}).get("model") or model
+    return os.environ.get("FOREMAN_JEV_ENDPOINT", url), model
+
+
+def candidates(provider, settings=None, request_model=None):
+    """The model to request, then fallbacks — fallbacks only when nothing was pinned."""
+    url, model = endpoint_for(provider, settings, request_model)
+    pinned = bool(request_model or (settings or {}).get("model") or os.environ.get("FOREMAN_JEV_MODEL"))
+    return url, [model] + ([] if pinned else [m for m in FALLBACK_MODELS.get(provider, []) if m != model])
+
+
+def post_first(url, key, provider, settings, payload, timeout, request_model=None):
+    """POST, walking the fallback list on 'model does not exist'. -> (status, text, latency, model-requested)."""
+    url, models = candidates(provider, settings, request_model)
+    for m in models:
+        body = json.dumps(dict(payload, model=m)).encode()
+        status, text, lat = post(url, key, body, timeout)
+        if not (status == 400 and "does not exist" in text):
+            return status, text, lat, m, len(body)
+    return status, text, lat, m, len(body)
 
 
 def validate(req):
@@ -152,7 +177,7 @@ def redact(text, key):
 
 def classify(status, text=""):
     if status == 400 and "does not exist" in text:
-        return "MODEL_NOT_FOUND — set 'model: <exact id>' in the jev-enabled flag file (OpenRouter needs an exact version such as typesafe/jev-1.13)", 6
+        return "MODEL_NOT_FOUND — every candidate was refused; set 'model: <exact id>' in the jev-enabled flag file (for example the newest typesafe/jev-X.Y listed on OpenRouter)", 6
     return _classify(status)
 
 
@@ -204,10 +229,10 @@ def cmd_check():
             print(f"jev key check: HTTP {e.code} (continuing to a live decision)")
         except Exception as e:
             print(f"jev key check: {type(e).__name__} (continuing to a live decision)")
-    body = json.dumps({"model": model,
-                       "state": {"value": "ping"},
-                       "questions": {"q": {"type": "noul", "instructions": "Is the value exactly the word ping?"}}}).encode()
-    status, text, lat = post(url, key, body, timeout)
+    payload = {"state": {"value": "ping"},
+               "questions": {"q": {"type": "noul", "instructions": "Is the value exactly the word ping?"}}}
+    status, text, lat, model, _ = post_first(url, key, provider, settings, payload, timeout)
+    text = redact(text, key)
     verdict, code = classify(status, text)
     detail = ""
     if status == 200:
@@ -218,7 +243,7 @@ def cmd_check():
                 verdict, code = "MALFORMED_RESPONSE", 6
                 detail = f" detail={redact(text[:160], key)!r}"
             else:
-                detail = f" answer={ans} usage={d.get('usage')}"
+                detail = f" answer={ans} served={d.get('model', 'unreported')} usage={d.get('usage')}"
         except ValueError:
             verdict, code = "MALFORMED_RESPONSE", 6
     else:
@@ -243,16 +268,16 @@ def cmd_run(req_path, out_path):
         sys.exit(64)
     key, provider, source, settings = gate()
     url, model = endpoint_for(provider, settings)
-    req.setdefault("model", model)
-    body = json.dumps(req).encode()
-    status, text, lat = post(url, key, body, float(os.environ.get("FOREMAN_JEV_TIMEOUT", "10")))
+    status, text, lat, model, nbytes = post_first(url, key, provider, settings, req, float(os.environ.get("FOREMAN_JEV_TIMEOUT", "10")),
+                                                  request_model=req.get("model"))
+    req["model"] = model
     verdict, code = classify(status, text)
     text = redact(text, key)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(text)
     print(f"jev access: {verdict}")
     print(f"endpoint: {url}  model requested: {req['model']}  key: {source} (value withheld)")
-    print(f"latency: {lat:.2f}s  request bytes: {len(body)}  artifact: {out_path}")
+    print(f"latency: {lat:.2f}s  request bytes: {nbytes}  artifact: {out_path}")
     if status == 200:
         try:
             d = json.loads(text)

@@ -151,6 +151,15 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == "/deny":
             self.send_response(401); self.end_headers()
             self.wfile.write(json.dumps({"error": {"code": 401, "echo": self.headers.get("Authorization", "")}}).encode()); return
+        if self.path == "/alias-refused" and body["model"].startswith("~"):
+            self.send_response(400); self.end_headers()
+            self.wfile.write(json.dumps({"error": {"message": f"Model {body['model']} does not exist"}}).encode()); return
+        if self.path == "/alias-refused":
+            out = {"model": body["model"] + "-20261014", "answers": {"q": {"noul": 0.91}}, "usage": {"input_tokens": 40}}
+            self.send_response(200); self.end_headers(); self.wfile.write(json.dumps(out).encode()); return
+        if self.path == "/echo-model":
+            out = {"model": self.headers.get("Authorization", ""), "answers": {"q": {"noul": 0.9}}, "usage": {}}
+            self.send_response(200); self.end_headers(); self.wfile.write(json.dumps(out).encode()); return
         if self.path == "/empty":
             self.send_response(200); self.end_headers(); self.wfile.write(b'{}'); return
         assert body["model"] and body["questions"]["q"]["type"] == "noul"
@@ -181,6 +190,23 @@ assert_contains "6.11 stub 200 with no answers: MALFORMED" "$TMP/j7" "MALFORMED_
 : > "$FH/.foreman/jev-enabled"
 run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/empty" python3 "$JEV" check > "$TMP/j8" 2>&1
 assert_eq       "6.11 check on empty 200: exit 6" "6" "$?"
+# 6.13 newest-release discovery: the default asks for the alias; if refused, the newest pinned fallback answers
+run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/ok" python3 "$JEV" check > "$TMP/j9" 2>&1
+assert_contains "6.13 default request is the newest-release alias" "$TMP/j9" "model=~typesafe/jev-latest"
+assert_contains "6.13 served release is reported" "$TMP/j9" "served=jev-1.13.0"
+run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/alias-refused" python3 "$JEV" check > "$TMP/j10" 2>&1
+assert_eq       "6.13 alias refused: falls back and answers" "0" "$?"
+assert_contains "6.13 fallback is the newest pinned release" "$TMP/j10" "model=typesafe/jev-1.14 "
+run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_MODEL="~typesafe/jev-latest" FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/alias-refused" python3 "$JEV" check > "$TMP/j11" 2>&1
+assert_eq       "6.13 a pinned model never silently falls back" "6" "$?"
+assert_contains "6.13 pinned refusal is MODEL_NOT_FOUND" "$TMP/j11" "MODEL_NOT_FOUND"
+run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_MODEL=typesafe/jev-1.13 python3 -B -c '
+import runpy; d=runpy.run_path("'"$JEV"'")
+print(d["candidates"]("openrouter", {}, "typesafe/jev-1.14-20261014")[1])' > "$TMP/j12" 2>&1
+assert_contains "6.13 a model named in the request beats the environment, with no fallback" "$TMP/j12" "['typesafe/jev-1.14-20261014']"
+run_env OPENROUTER_API_KEY=stubkey-XYZ FOREMAN_JEV_ENDPOINT="http://127.0.0.1:$PORT/echo-model" python3 "$JEV" check > "$TMP/j13" 2>&1
+LEAK13=0; grep -q "stubkey-XYZ" "$TMP/j13" && LEAK13=1
+assert_eq "6.13 a key echoed in a successful check is redacted" "0" "$LEAK13"
 LEAKF=0; grep -q "stubkey-XYZ" "$TMP/o3.json" && LEAKF=1
 assert_eq "6.12 key echoed by the provider is redacted in the artifact" "0" "$LEAKF"
 

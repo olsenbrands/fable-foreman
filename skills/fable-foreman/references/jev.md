@@ -9,12 +9,19 @@ free ($0.042 per M input tokens, output free; a typical triage call costs
 ~$0.0002). Everything below is optional: **with Jev absent or disabled, the skill
 behaves identically**, and nothing in the First Law or the acceptance rules moves.
 
-Facts checked 2026-09-23 (docs.typesafe.ai, PRIMARY): current model `jev-1.13.0`;
-`jev-latest` and `jev-preview` both alias it **on TypeSafe's own endpoint only —
-OpenRouter accepts just the exact id `typesafe/jev-1.13`** (OBSERVED 2026-09-23: the
-alias and `jev-1.13.0` both return 400 "does not exist"; the launcher's OpenRouter
-default is therefore `typesafe/jev-1.13`, overridable with a `model:` line in the flag
-file when a new version ships); limits 32K state tokens / 64K request;
+**Newest release, found automatically.** The launcher asks OpenRouter for the alias
+`~typesafe/jev-latest`, which tracks the newest Jev release, and prints the release that
+actually answered (`served=`): OBSERVED 2026-10-22 it served `typesafe/jev-1.14-20261014`
+(Jev 1.14, released 2026-10-14). Ledger that served id and treat it as the session's
+Jev. If the alias is ever refused as unknown, the launcher falls back to the newest
+pinned release it knows (`typesafe/jev-1.14`) and says which
+one answered. A `model:` line in the flag file, or `FOREMAN_JEV_MODEL`, pins a version
+and switches the fallback off. (On TypeSafe's own endpoint the alias is `jev-latest`.
+The plain `typesafe/jev-latest`, without the `~`, is refused by OpenRouter.)
+
+Facts checked 2026-10-22 (docs.typesafe.ai, PRIMARY): price unchanged ($0.042/M input,
+output free); limits 32K state tokens / 64K request by default (1.14 adds an optional
+long-context request header — not used by the launcher);
 ~1,200 req/min; zero data retention is enterprise-only; documented weak spots are
 date comparison, arithmetic, multi-step reasoning, literal reading, contradictory
 instructions, structural invariants, large irrelevant state, and **adversarial text
@@ -68,7 +75,7 @@ provider: openrouter          # or: typesafe
 keychain-service: <name>      # macOS keychain service holding the key (optional
                               # if OPENROUTER_API_KEY / TYPESAFE_API_KEY is exported)
 privacy: metadata             # or: snippets (short excerpts allowed)
-model: typesafe/jev-1.13      # optional; OpenRouter needs an exact version id
+model: typesafe/jev-1.14      # optional pin; omit it to track the newest release
 ```
 
 Then `scripts/access-check.sh jev` prints one verdict: `REACHABLE`, `KEY_REJECTED`
@@ -226,6 +233,8 @@ If the probe reports Jev opted in and `access-check.sh jev` is `REACHABLE`:
 | 1. Citation-support pre-check | cited findings from any reviewer are about to be confirmed | **mandatory shadow call** |
 | 2. Cross-reviewer de-duplication | findings from two or more reviewers are about to be merged | **mandatory shadow call** |
 | 3–8 | performance-record ranking, report screens, injection screens, test triage, criteria lint, route sanity | optional; cap at ~5 shadow calls per run so the ceremony never pushes the lead back to doing work inline |
+| — | a one-line fix, a single deterministic command, any job with nothing to merge, rank or screen | **do not call Jev** — there is no decision for it to order |
+| — | which date is later, any arithmetic, "is it safe to run this delete/force-push/secret-touching command" | **never Jev** — its documented weak spots; the lead decides, and destructive or security steps get a human or a deterministic check |
 
 Mandatory means: run it even when the job is small and the lead triages inline. In
 shadow mode the call changes nothing about the lead's decision; it records a paired

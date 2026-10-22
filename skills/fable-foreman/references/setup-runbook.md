@@ -6,10 +6,10 @@ This runbook is written to be executed by a coding agent with a real shell. Ever
 
 **A1. Probe.** Run `scripts/probe.sh` from this skill's directory. Paste its output into the run ledger (or your report if no ledger exists yet). This is metadata-only and needs no approval.
 
-**A2. Codex functional check** (skip if A1 showed Codex absent or unauthenticated). This is a billable call — the consent rule applies (codex-workers.md): confirm Codex is wanted this session before running it. One tiny call on the account default model:
+**A2. Codex functional check** (skip if A1 showed Codex absent or unauthenticated). This is a billable call — the consent rule applies (codex-workers.md): confirm Codex is wanted this session before running it. One tiny call on an explicitly named, non-premium model — never the account default, which may be a premium model:
 
 ```bash
-codex exec "Reply with exactly: ok"
+scripts/access-check.sh codex --consented --model "$(python3 scripts/model_lines.py resolve codex luna)"
 ```
 
 - `ok` back → Codex seats are live. Record billing mode from A1 in the ledger.
@@ -66,7 +66,7 @@ When Part B is active, Codex seats may be dispatched as native subagents instead
 
 Jev needs the user's own key and the user's own opt-in. Never create the flag file or store a key yourself; walk the user through it.
 
-1. **Key:** an OpenRouter account with credit (model `typesafe/jev-1.13`) or a TypeSafe account (typesafe.ai). Either key works.
+1. **Key:** an OpenRouter account with credit (the launcher asks for `~typesafe/jev-latest`, the newest release — `typesafe/jev-1.14` on 2026-10-22) or a TypeSafe account (typesafe.ai). Either key works.
 2. **Where the key lives:** `OPENROUTER_API_KEY` / `TYPESAFE_API_KEY` in the environment, or a macOS keychain item the user creates (`security add-generic-password -s <service> -a "$USER" -w`) named on the flag file's `keychain-service:` line.
 3. **Opt-in:** the user creates `~/.foreman/jev-enabled` with `provider:`, optional `keychain-service:`, `privacy:` and `model:` lines (format in jev.md).
 4. **Proof:** `scripts/access-check.sh jev` must print `REACHABLE`. `NO_KEY`, `KEY_REJECTED`, `NO_CREDIT`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `TRANSPORT_FAILED` or `DISABLED` each name the fix. The skill works identically without Jev.

@@ -21,7 +21,7 @@ The probe above is metadata-only and free. An actual Codex invocation **spends t
 2. Confirm they want Codex in the rotation — unless they already asked for Codex this session, which is consent.
 3. Record the consent (and mode) in the ledger.
 
-Only after consent, run the functional check — one tiny call, cheapest tier you can name confidently or the account default: `codex exec "Reply with exactly: ok"`. If it fails while credentials exist, they're likely expired: tell the user to run `codex login`; never initiate an interactive auth flow yourself.
+Only after consent, run the functional check — one tiny call through the guarded launcher on an explicitly named, non-premium model (never the account default, which may be premium): `scripts/access-check.sh codex --consented --model <newest luna id>`. If it fails while credentials exist, they're likely expired: tell the user to run `codex login`; never initiate an interactive auth flow yourself.
 
 **Opt-in pre-approval.** If `scripts/probe.sh` printed `codex billing: PRE-APPROVED (user config)` (the user created `~/.foreman/codex-preapproved` or exported `FOREMAN_CODEX_PREAPPROVED=1`), steps 1–2 are skipped: note the billing mode and `pre-approved by user config` in the ledger and dispatch — the user has asked for Codex to be used ambitiously on this machine. The flag is machine-local and never part of this repository.
 

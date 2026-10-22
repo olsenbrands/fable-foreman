@@ -51,7 +51,7 @@ until a dispatch reports otherwise (failure mapping below).
 
 ## Billing (subscription session — ordinary budget discipline applies)
 
-The account used to verify this reference authenticates via an OAuth/OIDC session against grok.com, not an API key — a subscription, the same shape as a ChatGPT-subscription Codex login, not metered per call against a card. **Opt-in pre-approval (user-set, per machine, added 2026-09-04):** if `scripts/probe.sh` reports `grok billing: PRE-APPROVED (user config)` (`~/.foreman/grok-preapproved` exists, or `FOREMAN_GROK_PREAPPROVED=1`), skip the consent ask, journal `Grok: pre-approved by user config`, dispatch Grok (the newest base model for implementation, `grok-4.6` for output-light review — see tiers below) with **effort chosen per dispatch by the lead** (with no performance evidence yet, the prior is the highest level the model supports — pre-approval removes the consent ask, it does not fix a level), and fan out up to the parallel ceiling the flag file names (default 15 — 15 concurrent Grok 4.6 workers ran comfortably in testing; a reported successful default, not a measured maximum — see Quota notes). Without the flag, treat Grok spend under the ordinary rule: journal it, and step a Grok dispatch down or stop under budget pressure exactly as for any other seat.
+The account used to verify this reference authenticates via an OAuth/OIDC session against grok.com, not an API key — a subscription, the same shape as a ChatGPT-subscription Codex login, not metered per call against a card. **Opt-in pre-approval (user-set, per machine, added 2026-09-04):** if `scripts/probe.sh` reports `grok billing: PRE-APPROVED (user config)` (`~/.foreman/grok-preapproved` exists, or `FOREMAN_GROK_PREAPPROVED=1`), skip the consent ask, journal `Grok: pre-approved by user config`, dispatch Grok (the newest base model, for implementation and review alike — see tiers below) with **effort chosen per dispatch by the lead** (with no performance evidence yet, the prior is the highest level the model supports — pre-approval removes the consent ask, it does not fix a level), and fan out up to the parallel ceiling the flag file names (default 15 — 15 concurrent Grok 4.6 workers ran comfortably in testing; a reported successful default, not a measured maximum — see Quota notes). Without the flag, treat Grok spend under the ordinary rule: journal it, and step a Grok dispatch down or stop under budget pressure exactly as for any other seat.
 
 What "spend" means concretely: every `--output-format json` call returns a `total_cost_usd` field in the envelope, which the launcher parses and prints. Real dispatches observed this session: a trivial echo ~$0.010; a one-file schema review ~$0.015; writing a module plus tests and running them ~$0.021 (20s, 4 turns); resuming a session to add validation and re-run tests ~$0.014 (26s, 4 turns). Treat published list prices (model-matrix.md Table 1) as an **upper bound**, not the bill — this account's envelopes have reported pool rates of 0.17x list (2026-08) and ~0.34x list (2026-09-23) — the rate moves, so never hardcode it (model-matrix.md). Where the envelope reports a real cost, that number wins over any table.
 
@@ -63,14 +63,14 @@ Functional check before the first real dispatch of a session: `scripts/access-ch
 account sees; the CLI's `~/.grok/models_cache.json` is authoritative for *which
 effort levels each model accepts*, and both launchers read it. `scripts/probe.sh`
 prints the live list and the **newest base model** (the highest `grok-X.Y` with no
-suffix). As of 2026-09-23 this account sees:
+suffix) — the seat every Grok row on the routing card uses. As of 2026-10-22 this account sees:
 
 | Model | Efforts | Context | Price (list) | Role |
 |---|---|---|---|---|
 | `grok-4.7` (CLI default) | low, medium, high (vendor default, "Recommended"), xhigh | 500K | $2 / $6 | **default implementation seat** |
 | `grok-4.7-build-fast` | same | 500K | **2x** ($4 / $12) | wall-clock emergencies only |
-| `grok-4.6` | low, medium, high, xhigh | 500K | $2 / $6 | output-light reviewer; fallback where 4.7 regresses |
-| `grok-4.5` | low, medium, high (**no xhigh**) | 500K | $2 / $6 | last-resort fallback |
+| `grok-4.6` | low, medium, high, xhigh | 500K | $2 / $6 | superseded — never a seat |
+| `grok-4.5` | low, medium, high (**no xhigh**) | 500K | $2 / $6 | superseded |
 
 **4.7 vs 4.6 — the evidence, not the hype.** Artificial Analysis (PRIMARY,
 2026-09-21): Coding Agent Index 56 vs 47, Terminal-Bench 4.0 33% vs 18%, DeepSWE 73%
@@ -80,19 +80,18 @@ mostly about that token burn (and tighter guardrails in chat use), not a measure
 coding regression; none was found. On this account a one-word ping cost 222 output
 tokens on 4.7 vs 12 on 4.6 at `low` (one sample — a hint, not a measurement). So:
 
-The routing card decides which of these a job gets (everyday coding is a close call between Grok 4.7, GPT-6 Sol and Sonnet 5; review rows default to Grok 4.6). The evidence behind those rows:
+The routing card decides which job gets Grok (everyday coding is a close call between the newest Grok, the newest Codex Sol and Sonnet; review rows default to the newest Grok at medium). The evidence behind those rows:
 
-- **Implementation (agentic coding, anything that runs tools or tests): `grok-4.7`.**
-- **Adversarial review / analysis (output-light, reasoning over text): `grok-4.6`** is
-  the value default; 4.7 when the review must execute code.
-- **When a newer Grok appears** (probe prints a new newest-base-model), do not assume
-  it is better for every task shape: take the first ticket of the next fan-out through
-  both the new and the previous model (the "prove an unproven repeated pattern on a
-  representative early artifact" rule, SKILL.md) and let the performance record decide.
-  Until then the newest model is the implementation default and the previous one the
-  review default.
-- **Regression fallback is per task shape, not global.** If the record shows 4.7
-  failing where 4.6 succeeded on a shape, route that shape to 4.6 and journal why.
+- **Implementation and review both use the newest base model** (`grok-4.7` today). For
+  output-light review, lower the effort (medium) rather than dropping to an older model —
+  that keeps the output volume down without routing to a superseded release.
+- **When a newer Grok appears** (probe prints a new newest-base-model), the card uses it
+  automatically: ping it once (`access-check.sh grok --consented --model <id>`), and if
+  the ping fails, use the next-newest base model and ledger why.
+- **Regression fallback is per task shape, not global.** If the record shows the newest
+  model failing on a task shape, route that shape to a different current line or provider
+  (newest Codex Sol, Sonnet) with the `record` deviation and journal why — never back to
+  an older Grok release.
 
 Effort is **per model** and read from the cache — the launcher refuses a level the
 model does not list, before spending. `grok-4.5` has no `xhigh` (a hard error, exit 1,
@@ -166,25 +165,28 @@ Non-interactive, one ticket per invocation, via the wrapper (above) or directly:
 in the marketplace repo; resolve it once, and pass every argument as an absolute path.
 
 ```bash
+# Resolve the Grok base line once per session (never hard-code a version):
+GROK_MODEL=$(python3 "$FOREMAN_SKILL_DIR"/scripts/model_lines.py resolve grok base)
+
 # Advisory / review work — read-only sandbox, sited outside /tmp:
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/.foreman/scratch/ticket-N.md grok-4.6 medium read-only \
+  <abs-repo>/.foreman/scratch/ticket-N.md "$GROK_MODEL" medium read-only \
   <abs-repo>/.foreman/scratch/artifact-N.json <abs-repo>
 
 # Implementation work — writable workspace:
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/.foreman/scratch/ticket-N.md grok-4.7 high workspace \
+  <abs-repo>/.foreman/scratch/ticket-N.md "$GROK_MODEL" high workspace \
   <abs-repo>/.foreman/scratch/artifact-N.json <abs-repo>
 
 # Continuing a prior dispatch's session (verified: the worker recalled code
 # from the earlier turn without it being re-sent):
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/.foreman/scratch/ticket-N-followup.md grok-4.7 high workspace \
+  <abs-repo>/.foreman/scratch/ticket-N-followup.md "$GROK_MODEL" high workspace \
   <abs-repo>/.foreman/scratch/artifact-N2.json <abs-repo> <sessionId-from-artifact-N>
 
 # Schema-locked review — note the EMPTY 7th (resume) slot before the schema:
 "$FOREMAN_SKILL_DIR"/scripts/grok-dispatch.sh \
-  <abs-repo>/ticket.md grok-4.6 medium read-only \
+  <abs-repo>/ticket.md "$GROK_MODEL" medium read-only \
   <abs-repo>/out.json <abs-repo> "" <abs-repo>/schema.json
 ```
 
