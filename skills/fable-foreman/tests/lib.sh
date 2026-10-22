@@ -2,6 +2,14 @@
 # POSIX sh. Fixtures do NOT use `set -e`: a failed assertion is recorded and the
 # fixture keeps going, so one run reports every broken case rather than the first.
 
+# Scratch repos must not inherit the runner's git configuration. A global
+# core.excludesFile that already ignores .foreman/ makes init-ledger.sh suppress
+# its "is not gitignored" note — correct behaviour, but it fails case 1.3 on that
+# machine and nowhere else. Neutralise global and system config so every git call
+# a fixture makes sees the same empty configuration (git >= 2.32).
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_SYSTEM=/dev/null
+
 PASS_COUNT=0
 FAIL_COUNT=0
 
